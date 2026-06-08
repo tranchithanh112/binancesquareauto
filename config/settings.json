@@ -1,0 +1,28 @@
+{
+  "schedule": {
+    "morning_hour": 8,
+    "evening_hour": 20,
+    "post_interval_min": 20,
+    "post_interval_max": 30,
+    "posts_per_batch": 15,
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "sources": {
+    "coindesk_rss": "https://www.coindesk.com/arc/outboundfeeds/rss/",
+    "cointelegraph_rss": "https://cointelegraph.com/rss",
+    "reuters_url": "https://www.reuters.com/technology/cryptocurrency/",
+    "coingecko_url": "https://www.coingecko.com/en/news",
+    "google_news_queries": ["crypto regulation", "Fed rate decision", "SEC crypto"],
+    "x_accounts": ["elonmusk", "saylor", "VitalikButerin", "cz_binance"]
+  },
+  "scrape": {
+    "max_articles_per_source": 10,
+    "max_age_hours": 12
+  },
+  "dedup": {
+    "similarity_threshold": 0.8,
+    "cleanup_days": 30
+  },
+  "db_path": "data/bot.db",
+  "log_path": "logs/bot.log"
+}
