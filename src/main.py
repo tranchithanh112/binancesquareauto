@@ -297,6 +297,7 @@ def run_auto_rewrite(cfg, db: Database, max_rewrites: int = 10) -> dict:
         prompt = build_prompt(
             title=a["title"], content=content,
             importance=a["importance"], coin_tags=coin_tags,
+            source=a["source"],
         )
         log.info(f"rewriting article {a['id']}: {a['title'][:60]}")
         output, err = claude_rewrite(prompt)
