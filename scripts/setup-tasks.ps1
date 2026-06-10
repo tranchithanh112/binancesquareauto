@@ -21,10 +21,10 @@ Write-Host "Python: $PythonExe"
 function New-BnTask {
     param(
         [string]$Name,
-        [string[]]$Args,
+        [string[]]$CmdArgs,
         [Microsoft.Management.Infrastructure.CimInstance[]]$Triggers
     )
-    $argLine = ($Args -join " ")
+    $argLine = ($CmdArgs -join " ")
     $action = New-ScheduledTaskAction `
         -Execute $PythonExe `
         -Argument $argLine `
@@ -34,7 +34,8 @@ function New-BnTask {
         -DontStopIfGoingOnBatteries `
         -StartWhenAvailable `
         -ExecutionTimeLimit (New-TimeSpan -Minutes 30)
-    $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive
+    $userId = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+    $principal = New-ScheduledTaskPrincipal -UserId $userId -LogonType Interactive
 
     if (Get-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue) {
         Unregister-ScheduledTask -TaskName $Name -Confirm:$false
@@ -50,24 +51,24 @@ function New-BnTask {
 
 # --- Scrape: 4x/day ---
 $scrapeTriggers = @(
-    New-ScheduledTaskTrigger -Daily -At "06:00",
-    New-ScheduledTaskTrigger -Daily -At "12:00",
-    New-ScheduledTaskTrigger -Daily -At "18:00",
-    New-ScheduledTaskTrigger -Daily -At "22:00"
+    (New-ScheduledTaskTrigger -Daily -At "06:00"),
+    (New-ScheduledTaskTrigger -Daily -At "12:00"),
+    (New-ScheduledTaskTrigger -Daily -At "18:00"),
+    (New-ScheduledTaskTrigger -Daily -At "22:00")
 )
 New-BnTask -Name "BinanceSquareBot-Scrape" `
-    -Args @("-m", "src.main", "--scrape") `
+    -CmdArgs @("-m", "src.main", "--scrape") `
     -Triggers $scrapeTriggers
 
 # --- Rewrite: 5 min after each scrape ---
 $rewriteTriggers = @(
-    New-ScheduledTaskTrigger -Daily -At "06:05",
-    New-ScheduledTaskTrigger -Daily -At "12:05",
-    New-ScheduledTaskTrigger -Daily -At "18:05",
-    New-ScheduledTaskTrigger -Daily -At "22:05"
+    (New-ScheduledTaskTrigger -Daily -At "06:05"),
+    (New-ScheduledTaskTrigger -Daily -At "12:05"),
+    (New-ScheduledTaskTrigger -Daily -At "18:05"),
+    (New-ScheduledTaskTrigger -Daily -At "22:05")
 )
 New-BnTask -Name "BinanceSquareBot-Rewrite" `
-    -Args @("-m", "src.main", "--auto-rewrite", "--max-rewrites", "12") `
+    -CmdArgs @("-m", "src.main", "--auto-rewrite", "--max-rewrites", "12") `
     -Triggers $rewriteTriggers
 
 # --- Post: every 30 min from 06:00 to 23:30 ---
@@ -76,12 +77,12 @@ $postTrigger.Repetition = (New-ScheduledTaskTrigger -Once -At "06:00" `
     -RepetitionInterval (New-TimeSpan -Minutes 30) `
     -RepetitionDuration (New-TimeSpan -Hours 17 -Minutes 30)).Repetition
 New-BnTask -Name "BinanceSquareBot-Post" `
-    -Args @("-m", "src.main", "--post-next") `
+    -CmdArgs @("-m", "src.main", "--post-next") `
     -Triggers @($postTrigger)
 
 # --- Daily summary ---
 New-BnTask -Name "BinanceSquareBot-Summary" `
-    -Args @("-m", "src.main", "--summary") `
+    -CmdArgs @("-m", "src.main", "--summary") `
     -Triggers @(New-ScheduledTaskTrigger -Daily -At "23:55")
 
 Write-Host ""
