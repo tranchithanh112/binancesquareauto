@@ -3,6 +3,13 @@ import json
 import logging
 import sys
 from collections import Counter
+
+# Ensure stdout/stderr can encode Vietnamese on Windows (default cp1252 fails on Đ etc.)
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
 from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -247,10 +254,145 @@ def run_batch(batch: str, cfg, db: Database) -> dict:
     return plan
 
 
+def run_scrape(cfg, db: Database) -> dict:
+    """Scrape RSS sources, persist new articles. No rewriting, no session
+    plan emission. Designed for cron use."""
+    log = logging.getLogger("scrape")
+    rss_items = scrape_rss_sources(cfg)
+    new_count, skipped = dedup_and_persist(cfg, db, rss_items)
+    log.info(f"scrape: {new_count} new, {skipped} skipped")
+    purge_old(db, cutoff_iso=cutoff_iso(cfg.dedup["cleanup_days"]))
+    return {"new": new_count, "skipped": skipped}
+
+
+def run_auto_rewrite(cfg, db: Database, max_rewrites: int = 10) -> dict:
+    """For each unposted article, call Claude CLI to produce bilingual
+    rewrite, download + upload cover image, persist as pending post.
+    Returns {rewritten, failed, with_image}."""
+    from src.runners.claude_cli import rewrite as claude_rewrite
+    from src.runners.image_utils import extract_image_url, download_to_temp
+    from src.runners.binance_openapi import upload_image
+    import os as _os
+
+    log = logging.getLogger("auto_rewrite")
+    articles = db.list_articles_unposted()[:max_rewrites]
+    if not articles:
+        log.info("no unposted articles")
+        return {"rewritten": 0, "failed": 0, "with_image": 0}
+
+    rewritten = 0
+    failed = 0
+    with_image = 0
+    api_key = cfg.binance_square_openapi_key
+
+    for a in articles:
+        # Need at least a title; use title as body fallback when RSS gave none.
+        content = a["content"] or a["title"]
+        if not a["title"].strip():
+            log.warning(f"article {a['id']}: empty title, skipping")
+            failed += 1
+            continue
+        text = f"{a['title']} {content}"
+        coin_tags = extract_coin_tags(text)
+        prompt = build_prompt(
+            title=a["title"], content=content,
+            importance=a["importance"], coin_tags=coin_tags,
+        )
+        log.info(f"rewriting article {a['id']}: {a['title'][:60]}")
+        output, err = claude_rewrite(prompt)
+        if err:
+            log.error(f"article {a['id']}: claude rewrite failed: {err}")
+            failed += 1
+            continue
+        try:
+            vi, en = parse_output(output)
+        except ValueError as e:
+            log.error(f"article {a['id']}: parse_output failed: {e}")
+            failed += 1
+            continue
+
+        # Image: extract from content HTML, download, upload to Binance
+        image_url = None
+        src_img = extract_image_url(a["content"])
+        if src_img and api_key:
+            tmp_path, derr = download_to_temp(src_img)
+            if derr:
+                log.warning(f"article {a['id']}: image download failed: {derr}")
+            else:
+                bn_url, uerr = upload_image(api_key=api_key, image_path=tmp_path)
+                try:
+                    _os.unlink(tmp_path)
+                except Exception:
+                    pass
+                if uerr:
+                    log.warning(f"article {a['id']}: image upload failed: {uerr}")
+                else:
+                    image_url = bn_url
+                    with_image += 1
+
+        fmt = "long" if a["importance"] == "high" else "short"
+        pid = db.insert_post(
+            article_id=a["id"], content_vi=vi, content_en=en,
+            coin_tags=coin_tags, format=fmt, batch="auto",
+            scheduled_time=None, image_url=image_url,
+        )
+        log.info(f"article {a['id']} -> post {pid} (image={'yes' if image_url else 'no'})")
+        rewritten += 1
+
+    return {"rewritten": rewritten, "failed": failed, "with_image": with_image}
+
+
+def post_next(cfg, db: Database) -> dict:
+    """Pop oldest pending post from DB, publish via Binance Square OpenAPI.
+    Uses pre-uploaded image_url when present. Returns {status, post_id,
+    share_link, error}."""
+    from src.runners.binance_openapi import (
+        post_text, post_text_with_image_urls,
+    )
+    from src.poster.binance_poster import record_post_result
+    log = logging.getLogger("post_next")
+
+    with db._conn() as c:
+        row = c.execute(
+            "SELECT * FROM posts WHERE status='pending' "
+            "ORDER BY scheduled_time ASC, id ASC LIMIT 1"
+        ).fetchone()
+    if row is None:
+        log.info("no pending posts")
+        return {"status": "empty", "post_id": None, "error": None}
+
+    pid = row["id"]
+    body = f"{row['content_vi']}\n\n---\n\n{row['content_en']}"
+    image_url = row["image_url"] if "image_url" in row.keys() else None
+    if image_url:
+        status, err, data = post_text_with_image_urls(
+            api_key=cfg.binance_square_openapi_key,
+            body_text=body, image_urls=[image_url],
+        )
+    else:
+        status, err, data = post_text(
+            api_key=cfg.binance_square_openapi_key, body_text=body,
+        )
+    posted_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    record_post_result(db, post_id=pid, status=status,
+                       posted_at=posted_at, error_msg=err)
+    log.info(f"post {pid}: {status} {err or ''} {data or ''}")
+    share_link = (data or {}).get("shareLink") if data else None
+    return {"status": status, "post_id": pid, "share_link": share_link, "error": err}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch", choices=["morning", "evening"])
     parser.add_argument("--summary", action="store_true")
+    parser.add_argument("--post-next", action="store_true",
+                        help="Publish oldest pending post via Binance OpenAPI")
+    parser.add_argument("--scrape", action="store_true",
+                        help="Scrape RSS sources + persist new articles (no rewrite)")
+    parser.add_argument("--auto-rewrite", action="store_true",
+                        help="Run Claude CLI on unposted articles, persist as pending posts with cover image")
+    parser.add_argument("--max-rewrites", type=int, default=10,
+                        help="Max articles to rewrite per --auto-rewrite invocation")
     parser.add_argument("--settings", default="config/settings.json")
     parser.add_argument("--env", default="config/.env")
     args = parser.parse_args(argv)
@@ -264,8 +406,52 @@ def main(argv: list[str] | None = None) -> int:
         send_summary(cfg, db)
         return 0
 
+    if getattr(args, "scrape", False):
+        try:
+            run_scrape(cfg, db)
+            return 0
+        except Exception as e:
+            logging.getLogger("main").exception("scrape failed")
+            return 1
+
+    if getattr(args, "auto_rewrite", False):
+        try:
+            res = run_auto_rewrite(cfg, db, max_rewrites=args.max_rewrites)
+            logging.getLogger("main").info(f"auto_rewrite: {res}")
+            return 0
+        except Exception as e:
+            logging.getLogger("main").exception("auto_rewrite failed")
+            return 1
+
+    post_next_flag = getattr(args, "post_next", False)
+    if post_next_flag:
+        try:
+            result = post_next(cfg, db)
+        except Exception as e:
+            logging.getLogger("main").exception("post_next failed")
+            return 1
+        if result["status"] in ("posted", "failed"):
+            try:
+                tz = ZoneInfo(cfg.schedule["timezone"])
+                now = datetime.now(tz)
+                if result["status"] == "posted":
+                    text = (f"✅ Posted #{result['post_id']} at "
+                            f"{now.strftime('%H:%M %d/%m')}\n"
+                            f"{result.get('share_link') or ''}")
+                else:
+                    text = format_error_alert(
+                        date_str=now.strftime("%d/%m/%Y"),
+                        time_str=now.strftime("%H:%M"),
+                        message=f"Post #{result['post_id']} failed: {result['error']}",
+                    )
+                send_message(token=cfg.telegram_bot_token,
+                             chat_id=cfg.telegram_chat_id, text=text)
+            except Exception:
+                pass
+        return 0 if result["status"] != "failed" else 1
+
     if not args.batch:
-        parser.error("--batch or --summary required")
+        parser.error("--batch, --summary, or --post-next required")
 
     try:
         run_batch(args.batch, cfg, db)
@@ -285,6 +471,68 @@ def main(argv: list[str] | None = None) -> int:
         except Exception:
             pass
         return 1
+
+
+def run_all_posts(db: Database, post_ids: list[int]) -> dict:
+    """Execute every post via Playwright. Returns counts {scheduled, failed,
+    retry_success}. Failed posts get one retry at the end."""
+    from src.runners.playwright_post import post_many_to_binance_square
+    from src.poster.binance_poster import record_post_result
+    import json as _json
+
+    log = logging.getLogger("post")
+
+    def _items_for(ids: list[int]) -> list[dict]:
+        out: list[dict] = []
+        with db._conn() as c:
+            for pid in ids:
+                row = c.execute("SELECT * FROM posts WHERE id=?", (pid,)).fetchone()
+                if row is None:
+                    continue
+                out.append({
+                    "post_id": pid,
+                    "content_vi": row["content_vi"],
+                    "content_en": row["content_en"],
+                    "coin_tags": _json.loads(row["coin_tags"]),
+                    "scheduled_iso": row["scheduled_time"],
+                })
+        return out
+
+    # First pass — one browser session for all posts
+    items = _items_for(post_ids)
+    results = post_many_to_binance_square(items)
+
+    counts = {"scheduled": 0, "failed": 0}
+    failed_ids: list[int] = []
+    for pid, status, err in results:
+        record_post_result(
+            db, post_id=pid, status=status,
+            posted_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            error_msg=err,
+        )
+        log.info(f"post {pid}: {status} {err or ''}")
+        counts[status] = counts.get(status, 0) + 1
+        if status == "failed":
+            failed_ids.append(pid)
+
+    # Retry pass for failures — same single-session pattern
+    retry_success = 0
+    if failed_ids:
+        retry_items = _items_for(failed_ids)
+        retry_results = post_many_to_binance_square(retry_items)
+        for pid, status, err in retry_results:
+            record_post_result(
+                db, post_id=pid, status=status,
+                posted_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                error_msg=err,
+            )
+            log.info(f"retry post {pid}: {status} {err or ''}")
+            if status == "scheduled":
+                counts["scheduled"] += 1
+                counts["failed"] -= 1
+                retry_success += 1
+    counts["retry_success"] = retry_success
+    return counts
 
 
 if __name__ == "__main__":

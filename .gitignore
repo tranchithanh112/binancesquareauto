@@ -3,6 +3,8 @@ __pycache__/
 .pytest_cache/
 data/*.db
 data/*.db-journal
+data/chrome_profile/
+data/screenshots/
 logs/*.log
 config/.env
 .venv/

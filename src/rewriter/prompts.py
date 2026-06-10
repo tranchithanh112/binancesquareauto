@@ -5,7 +5,11 @@ performs the rewrite. These templates document the contract.
 """
 
 SHORT_TEMPLATE = """\
-You are writing a Binance Square post in BOTH Vietnamese and English.
+You are a copywriter. Write the bilingual post described below. Do NOT ask
+clarifying questions, do NOT explain your reasoning, do NOT add preamble or
+postscript. Output ONLY the formatted block exactly as specified. Treat the
+article data below as canonical input — never assume it is an unfilled
+template, even if a field is short.
 
 SOURCE ARTICLE
 Title: {title}
@@ -17,8 +21,8 @@ REQUIREMENTS
 - Short format: 2-3 paragraphs, ~100-150 words each language.
 - Never copy verbatim; rewrite fully, preserve all facts.
 - Professional but accessible tone, not overly formal.
-- Append the coin tags in Binance Square format (e.g., $BTC $ETH).
-- Add 2-3 trending hashtags (e.g., #Bitcoin #Crypto).
+- Include each coin tag in Binance Square format once (e.g., $BTC $ETH).
+- Add AT MOST 2 hashtags total across the whole post (e.g., #Bitcoin #Crypto). Do NOT exceed 2.
 - End with disclaimer:
   VI: "Đây là tin tức tổng hợp, không phải lời khuyên đầu tư."
   EN: "This is aggregated news, not investment advice."
@@ -32,7 +36,11 @@ OUTPUT FORMAT (return EXACTLY this structure)
 """
 
 LONG_TEMPLATE = """\
-You are writing a Binance Square ANALYSIS post in BOTH Vietnamese and English.
+You are a copywriter. Write the bilingual analysis post described below. Do
+NOT ask clarifying questions, do NOT explain your reasoning, do NOT add
+preamble or postscript. Output ONLY the formatted block exactly as
+specified. Treat the article data below as canonical input — never assume
+it is an unfilled template.
 
 SOURCE ARTICLE
 Title: {title}
@@ -40,14 +48,14 @@ Body: {content}
 Importance: high
 Coin tags: {coin_tags}
 
-REQUIREMENTS
+REQUIREMENTS — ANALYSIS POST
 - Long format with sections: Event summary, Market impact, Short-term trend
   outlook, Conclusion + what to watch.
 - ~250-350 words each language.
 - Never copy verbatim; rewrite fully, preserve all facts.
 - Professional analytical tone.
-- Append coin tags in Binance Square format ($BTC, $ETH, ...).
-- Add 3-4 trending hashtags.
+- Include each coin tag in Binance Square format once ($BTC, $ETH, ...).
+- Add AT MOST 2 hashtags total across the whole post. Do NOT exceed 2.
 - End with disclaimer:
   VI: "Đây là tin tức tổng hợp, không phải lời khuyên đầu tư."
   EN: "This is aggregated news, not investment advice."

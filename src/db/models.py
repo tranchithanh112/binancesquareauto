@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS posts (
     scheduled_time TEXT,
     posted_at TEXT,
     error_msg TEXT,
-    batch TEXT NOT NULL
+    batch TEXT NOT NULL,
+    image_url TEXT
 );
 
 CREATE TABLE IF NOT EXISTS dedup (
@@ -54,6 +55,10 @@ class Database:
     def init_schema(self) -> None:
         with self._conn() as c:
             c.executescript(SCHEMA)
+            # Idempotent column migration for existing DBs
+            cols = {r[1] for r in c.execute("PRAGMA table_info(posts)").fetchall()}
+            if "image_url" not in cols:
+                c.execute("ALTER TABLE posts ADD COLUMN image_url TEXT")
 
     def insert_article(self, *, source: str, url: str, title: str, content: str,
                        scraped_at: str, importance: str) -> int:
@@ -76,13 +81,14 @@ class Database:
 
     def insert_post(self, *, article_id: int, content_vi: str, content_en: str,
                     coin_tags: list[str], format: str, batch: str,
-                    scheduled_time: str | None = None) -> int:
+                    scheduled_time: str | None = None,
+                    image_url: str | None = None) -> int:
         with self._conn() as c:
             cur = c.execute(
                 "INSERT INTO posts(article_id,content_vi,content_en,coin_tags,format,"
-                "status,scheduled_time,batch) VALUES (?,?,?,?,?,?,?,?)",
+                "status,scheduled_time,batch,image_url) VALUES (?,?,?,?,?,?,?,?,?)",
                 (article_id, content_vi, content_en, json.dumps(coin_tags),
-                 format, "pending", scheduled_time, batch),
+                 format, "pending", scheduled_time, batch, image_url),
             )
             return cur.lastrowid
 
