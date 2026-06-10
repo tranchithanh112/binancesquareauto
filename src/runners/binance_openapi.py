@@ -17,6 +17,21 @@ import requests
 import re as _re
 
 MAX_HASHTAGS = 2
+MAX_BODY_CHARS = 1500  # Binance short-post limit (API error 20013 if exceeded)
+
+
+def truncate_body(text: str, max_chars: int = MAX_BODY_CHARS) -> str:
+    """Truncate at last paragraph boundary under max_chars; append ellipsis."""
+    if len(text) <= max_chars:
+        return text
+    cut = text[:max_chars]
+    p = cut.rfind("\n\n")
+    if p > max_chars * 0.6:
+        return cut[:p].rstrip() + "..."
+    p = cut.rfind("\n")
+    if p > max_chars * 0.6:
+        return cut[:p].rstrip() + "..."
+    return cut.rstrip() + "..."
 
 
 def sanitize_hashtags(text: str, max_total: int = MAX_HASHTAGS) -> str:
@@ -77,7 +92,7 @@ def _api(url: str, api_key: str, body: dict,
 
 
 def _prep_body(body_text: str) -> str:
-    return sanitize_hashtags(body_text)
+    return truncate_body(sanitize_hashtags(body_text))
 
 
 def post_text(*, api_key: str, body_text: str,
