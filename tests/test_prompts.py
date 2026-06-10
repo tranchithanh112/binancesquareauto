@@ -3,7 +3,7 @@ from src.rewriter.prompts import build_prompt, parse_output
 
 def test_build_prompt_short_includes_title_and_tags():
     p = build_prompt(title="T", content="C", importance="normal", coin_tags=["BTC", "ETH"])
-    assert "T" in p and "$BTC $ETH" in p and "Short format" in p
+    assert "T" in p and "$BTC $ETH" in p and "HOOK" in p
 
 
 def test_build_prompt_long_for_high_importance():

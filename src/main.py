@@ -312,24 +312,33 @@ def run_auto_rewrite(cfg, db: Database, max_rewrites: int = 10) -> dict:
             failed += 1
             continue
 
-        # Image: extract from content HTML, download, upload to Binance
+        # Image: prefer RSS-embedded; fall back to CoinGecko 7d chart of
+        # the primary coin tag so every post has visual punch.
         image_url = None
+        tmp_path = None
         src_img = extract_image_url(a["content"])
-        if src_img and api_key:
+        if src_img:
             tmp_path, derr = download_to_temp(src_img)
             if derr:
                 log.warning(f"article {a['id']}: image download failed: {derr}")
+                tmp_path = None
+        if tmp_path is None and coin_tags:
+            from src.runners.coingecko_chart import make_chart
+            tmp_path, cerr = make_chart(coin_tags[0])
+            if cerr:
+                log.warning(f"article {a['id']}: chart gen failed: {cerr}")
+                tmp_path = None
+        if tmp_path and api_key:
+            bn_url, uerr = upload_image(api_key=api_key, image_path=tmp_path)
+            try:
+                _os.unlink(tmp_path)
+            except Exception:
+                pass
+            if uerr:
+                log.warning(f"article {a['id']}: image upload failed: {uerr}")
             else:
-                bn_url, uerr = upload_image(api_key=api_key, image_path=tmp_path)
-                try:
-                    _os.unlink(tmp_path)
-                except Exception:
-                    pass
-                if uerr:
-                    log.warning(f"article {a['id']}: image upload failed: {uerr}")
-                else:
-                    image_url = bn_url
-                    with_image += 1
+                image_url = bn_url
+                with_image += 1
 
         fmt = "long" if a["importance"] == "high" else "short"
         pid = db.insert_post(
