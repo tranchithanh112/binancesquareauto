@@ -35,6 +35,9 @@ function New-BnTask {
         -StartWhenAvailable `
         -ExecutionTimeLimit (New-TimeSpan -Minutes 30)
     $userId = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+    # Interactive runs whenever the user is signed in — locked screen counts as
+    # signed in, so this works for a 24/7 machine. S4U avoids the unlock check
+    # but needs Administrator to register. Stick with Interactive for non-admin.
     $principal = New-ScheduledTaskPrincipal -UserId $userId -LogonType Interactive
 
     if (Get-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue) {
