@@ -17,7 +17,7 @@ import requests
 import re as _re
 
 MAX_HASHTAGS = 2
-MAX_BODY_CHARS = 1500  # Binance short-post limit (API error 20013 if exceeded)
+MAX_BODY_CHARS = 3000  # Binance short-post safety cap (API error 20013 if exceeded)
 
 
 SEPARATOR = "\n\n---\n\n"

@@ -24,7 +24,7 @@ REQUIREMENTS
 - Professional but accessible tone, not overly formal.
 - Include each coin tag in Binance Square format once (e.g., $BTC $ETH).
 - Add AT MOST 2 hashtags total across the whole post. Do NOT exceed 2.
-- Each language section MUST be 600 characters or fewer (HARD limit).
+- Each language section MUST be 1300 characters or fewer (HARD limit).
 - End with disclaimer then a source-credit line, in this exact order:
   VI:
     Đây là tin tức tổng hợp, không phải lời khuyên đầu tư.
