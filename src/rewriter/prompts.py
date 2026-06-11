@@ -12,6 +12,11 @@ reasoning, do NOT add preamble or postscript. Output ONLY the formatted
 block exactly as specified. Treat the article data below as canonical
 input — never assume it is an unfilled template, even if a field is short.
 
+QUALITY OVER QUANTITY: every sentence must end naturally. NEVER trail off
+mid-sentence. NEVER cut mid-word. If you risk exceeding the per-language
+character budget, REWRITE shorter — do not just stop typing. Both VI and EN
+sections must be polished standalone posts.
+
 SOURCE ARTICLE
 Source: {source}
 Title: {title}
@@ -52,7 +57,16 @@ REPEAT the same 7-section structure in English (HOOK / TL;DR / MY TAKE /
 QUICK TA / OPEN QUESTION / tags / disclaimer + Source: {source}).
 
 HARD RULES
-- Each language section ≤ 1000 characters (HARD limit).
+- Each language section ≤ 1000 characters TOTAL including all headers,
+  bullets, tags, hashtags, disclaimer, and source line (HARD limit).
+- BUDGET your characters: hook ~80, summary ~150, opinion ~150, TA ~250,
+  question ~80, tags+hashtags ~50, disclaimer+source ~100 = ~860 buffer.
+  Cut bullet detail before truncating mid-sentence.
+- Every sentence MUST end naturally (period, question mark). Never trail
+  off mid-clause. Every section MUST be present and complete.
+- If you can't fit a full TA section, shorten to 2 bullets instead of 4.
+  If you can't fit the question, use a shorter one. NEVER omit the
+  disclaimer + source.
 - AT MOST 2 hashtags total across the whole post.
 - Each coin tag inserted ONCE in each language section.
 - Numbers must be realistic for current market (e.g., BTC ~$60-70K range
@@ -73,6 +87,11 @@ analysis post described below. Do NOT ask clarifying questions, do NOT
 explain reasoning, do NOT add preamble or postscript. Output ONLY the
 formatted block exactly as specified. Treat the article data below as
 canonical input.
+
+QUALITY OVER QUANTITY: every sentence must end naturally. NEVER trail off
+mid-sentence. NEVER cut mid-word. If you risk exceeding the per-language
+character budget, REWRITE shorter — do not just stop typing. Both VI and EN
+sections must be polished standalone posts.
 
 SOURCE ARTICLE
 Source: {source}
@@ -102,7 +121,16 @@ POST STRUCTURE — REQUIRED ANALYSIS POST, in this order:
 REPEAT same 9-section structure in English.
 
 HARD RULES
-- Each language section ≤ 1000 characters (HARD limit).
+- Each language section ≤ 1000 characters TOTAL including all headers,
+  bullets, tags, hashtags, disclaimer, and source line (HARD limit).
+- BUDGET your characters: hook ~80, summary ~150, opinion ~150, TA ~250,
+  question ~80, tags+hashtags ~50, disclaimer+source ~100 = ~860 buffer.
+  Cut bullet detail before truncating mid-sentence.
+- Every sentence MUST end naturally (period, question mark). Never trail
+  off mid-clause. Every section MUST be present and complete.
+- If you can't fit a full TA section, shorten to 2 bullets instead of 4.
+  If you can't fit the question, use a shorter one. NEVER omit the
+  disclaimer + source.
 - AT MOST 2 hashtags total across the whole post.
 - Mini-TA must be SPECIFIC numbers.
 - Take a definitive stance — no fence-sitting.

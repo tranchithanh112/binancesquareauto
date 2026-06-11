@@ -312,6 +312,31 @@ def run_auto_rewrite(cfg, db: Database, max_rewrites: int = 10) -> dict:
             failed += 1
             continue
 
+        # Quality check: if either lang exceeds 1000 chars, retry once
+        # with a stricter "shorten" addendum so Claude rewrites cleanly
+        # instead of letting Python truncate mid-sentence.
+        if len(vi) > 1000 or len(en) > 1000:
+            log.warning(
+                f"article {a['id']}: overflow vi={len(vi)} en={len(en)}, retrying tighter"
+            )
+            tighter = (
+                prompt
+                + "\n\nIMPORTANT RETRY: previous output was too long. "
+                "Each language section MUST be at most 950 characters. "
+                "Drop bullet detail, keep every sentence complete, ensure "
+                "disclaimer + source line are present and full."
+            )
+            output2, err2 = claude_rewrite(tighter)
+            if not err2:
+                try:
+                    vi2, en2 = parse_output(output2)
+                    if len(vi2) <= 1000 and len(en2) <= 1000:
+                        vi, en = vi2, en2
+                    elif (len(vi2) + len(en2)) < (len(vi) + len(en)):
+                        vi, en = vi2, en2
+                except ValueError:
+                    pass
+
         # Image: prefer RSS-embedded; fall back to CoinGecko 7d chart of
         # the primary coin tag so every post has visual punch.
         image_url = None
