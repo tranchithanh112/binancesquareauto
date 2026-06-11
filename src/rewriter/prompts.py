@@ -52,7 +52,7 @@ REPEAT the same 7-section structure in English (HOOK / TL;DR / MY TAKE /
 QUICK TA / OPEN QUESTION / tags / disclaimer + Source: {source}).
 
 HARD RULES
-- Each language section ≤ 1300 characters.
+- Each language section ≤ 900 characters (HARD limit).
 - AT MOST 2 hashtags total across the whole post.
 - Each coin tag inserted ONCE in each language section.
 - Numbers must be realistic for current market (e.g., BTC ~$60-70K range
@@ -102,7 +102,7 @@ POST STRUCTURE — REQUIRED ANALYSIS POST, in this order:
 REPEAT same 9-section structure in English.
 
 HARD RULES
-- Each language section ≤ 1300 characters.
+- Each language section ≤ 900 characters (HARD limit).
 - AT MOST 2 hashtags total across the whole post.
 - Mini-TA must be SPECIFIC numbers.
 - Take a definitive stance — no fence-sitting.
