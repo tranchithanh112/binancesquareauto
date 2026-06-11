@@ -27,11 +27,15 @@ def _truncate_half(text: str, max_chars: int) -> str:
     if len(text) <= max_chars:
         return text
     cut = text[:max_chars]
-    p = cut.rfind("\n\n")
-    if p > max_chars * 0.5:
-        return cut[:p].rstrip() + "..."
-    p = cut.rfind("\n")
-    if p > max_chars * 0.5:
+    min_keep = int(max_chars * 0.5)
+    # Try cleanest boundaries first: paragraph, then sentence end, then line,
+    # then word break. Never cut mid-word.
+    for marker in ("\n\n", ". ", "! ", "? ", "\n"):
+        p = cut.rfind(marker)
+        if p >= min_keep:
+            return cut[:p].rstrip(" \n") + "..."
+    p = cut.rfind(" ")
+    if p >= min_keep:
         return cut[:p].rstrip() + "..."
     return cut.rstrip() + "..."
 
