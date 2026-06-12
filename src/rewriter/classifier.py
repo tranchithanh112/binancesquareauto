@@ -22,17 +22,42 @@ HIGH_IMPORTANCE_KEYWORDS = [
 ]
 
 
+def _count_mentions(ticker: str, text_l: str) -> int:
+    total = 0
+    for pat in COIN_MAP[ticker]:
+        total += len(re.findall(pat, text_l))
+    return total
+
+
 def extract_coin_tags(text: str) -> list[str]:
+    """Return coin tickers found in text, ORDERED by relevance (most
+    mentioned first). Falls back to ['BTC'] only when nothing matches."""
     text_l = text.lower()
-    found: list[str] = []
-    for ticker, patterns in COIN_MAP.items():
-        for pat in patterns:
-            if re.search(pat, text_l):
-                found.append(ticker)
-                break
-    if not found:
+    scored: list[tuple[int, str]] = []
+    for ticker in COIN_MAP:
+        n = _count_mentions(ticker, text_l)
+        if n:
+            scored.append((n, ticker))
+    if not scored:
         return ["BTC"]
-    return found
+    scored.sort(key=lambda x: -x[0])
+    return [t for _, t in scored]
+
+
+def primary_coin(title: str, content: str) -> str | None:
+    """Pick the single coin the article is actually ABOUT. Title mentions
+    weigh 3x body mentions. Returns None when no coin clearly matches, so the
+    caller can skip a misleading chart instead of defaulting to BTC."""
+    title_l = (title or "").lower()
+    body_l = (content or "").lower()
+    best_ticker = None
+    best_score = 0
+    for ticker in COIN_MAP:
+        score = _count_mentions(ticker, title_l) * 3 + _count_mentions(ticker, body_l)
+        if score > best_score:
+            best_score = score
+            best_ticker = ticker
+    return best_ticker
 
 
 def classify_importance(text: str) -> str:

@@ -17,14 +17,16 @@ from zoneinfo import ZoneInfo
 from src.config import load_config
 from src.db.models import Database
 from src.db.cleanup import cutoff_iso, purge_old
-from src.dedup.dedup import is_duplicate, normalize_title
+from src.dedup.dedup import is_duplicate, normalize_title, extract_keywords
 from src.scraper.rss_scraper import scrape_rss
 from src.scraper.browser_scraper import (
     reuters_recipe, coingecko_recipe, google_news_recipe,
 )
 from src.scraper.x_scraper import x_profile_recipe
 from src.rewriter.prompts import build_prompt, parse_output
-from src.rewriter.classifier import classify_importance, extract_coin_tags
+from src.rewriter.classifier import (
+    classify_importance, extract_coin_tags, primary_coin,
+)
 from src.poster.scheduler import compute_schedule_times
 from src.poster.binance_poster import build_post_recipe
 from src.notify.telegram import (
@@ -79,6 +81,9 @@ def dedup_and_persist(cfg, db: Database, items: list[dict]) -> tuple[int, int]:
     log = logging.getLogger("dedup")
     existing_urls: set[str] = set()
     existing_titles = db.list_dedup_titles()
+    # Keyword signatures of articles accepted this run — catches the same
+    # event reported by two sources with different titles within one batch.
+    existing_signatures: list[set] = []
     new_count = 0
     skipped = 0
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -87,6 +92,9 @@ def dedup_and_persist(cfg, db: Database, items: list[dict]) -> tuple[int, int]:
             url=item["url"], title=item["title"],
             existing_urls=existing_urls, existing_titles=existing_titles,
             threshold=cfg.dedup["similarity_threshold"],
+            content=item.get("content", ""),
+            existing_signatures=existing_signatures,
+            kw_threshold=cfg.dedup.get("kw_threshold", 0.5),
         )
         if dup:
             skipped += 1
@@ -108,6 +116,9 @@ def dedup_and_persist(cfg, db: Database, items: list[dict]) -> tuple[int, int]:
                         created_at=now_iso)
         existing_urls.add(item["url"])
         existing_titles.append(title_norm)
+        existing_signatures.append(
+            extract_keywords(item["title"], item.get("content", ""))
+        )
         new_count += 1
     return new_count, skipped
 
@@ -337,8 +348,10 @@ def run_auto_rewrite(cfg, db: Database, max_rewrites: int = 10) -> dict:
                 except ValueError:
                     pass
 
-        # Image: prefer RSS-embedded; fall back to CoinGecko 7d chart of
-        # the primary coin tag so every post has visual punch.
+        # Image: prefer RSS-embedded. Fall back to a CoinGecko chart ONLY
+        # for the coin the article is actually about (title-weighted), and
+        # only when that coin is unambiguous — never force a BTC chart onto
+        # an article about another coin.
         image_url = None
         tmp_path = None
         src_img = extract_image_url(a["content"])
@@ -347,12 +360,16 @@ def run_auto_rewrite(cfg, db: Database, max_rewrites: int = 10) -> dict:
             if derr:
                 log.warning(f"article {a['id']}: image download failed: {derr}")
                 tmp_path = None
-        if tmp_path is None and coin_tags:
-            from src.runners.coingecko_chart import make_chart
-            tmp_path, cerr = make_chart(coin_tags[0])
-            if cerr:
-                log.warning(f"article {a['id']}: chart gen failed: {cerr}")
-                tmp_path = None
+        if tmp_path is None:
+            chart_coin = primary_coin(a["title"], content)
+            if chart_coin:
+                from src.runners.coingecko_chart import make_chart
+                tmp_path, cerr = make_chart(chart_coin)
+                if cerr:
+                    log.warning(f"article {a['id']}: chart gen failed: {cerr}")
+                    tmp_path = None
+            else:
+                log.info(f"article {a['id']}: no clear primary coin, no chart")
         if tmp_path and api_key:
             bn_url, uerr = upload_image(api_key=api_key, image_path=tmp_path)
             try:

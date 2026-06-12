@@ -26,11 +26,12 @@ Coin tags: {coin_tags}
 
 POST STRUCTURE — every section is REQUIRED, in this order:
 
-1. 🎯 HOOK (line 1, must be 1 of these styles):
-   - Bold prediction with numbers ("$BTC sắp test $50K — đây là lý do")
-   - Provocative question ("Có nên all-in $ETH ngay bây giờ?")
-   - Time-sensitive alert ("⚠️ 24h tới quyết định xu hướng tuần này")
-   - Counter-intuitive take ("Mọi người đang FOMO sai chỗ")
+1. 🎯 HOOK (line 1) — write a FRESH hook tailored to THIS article's
+   specific facts. Pick ONE angle (bold call / provocative question /
+   time-sensitive alert / counter-intuitive take) and craft it from the
+   article's own numbers and subject coin. Do NOT reuse any stock phrase.
+   FORBIDDEN openers (overused): "Mọi người đang FOMO sai chỗ", "FOMO sai
+   chỗ", "Có nên all-in", "24h tới quyết định". Invent something specific.
 
 2. 📰 TÓM TẮT (2-3 câu): What happened. Concrete numbers.
 
@@ -38,14 +39,15 @@ POST STRUCTURE — every section is REQUIRED, in this order:
    Start with "Theo tôi..." or "Tôi nghĩ..." Take a clear bullish OR bearish
    OR neutral-with-caveat stance. NOT generic "could go either way" fluff.
 
-4. 📊 PHÂN TÍCH NHANH (3-4 bullet lines, concrete levels):
+4. 📊 PHÂN TÍCH NHANH (3-4 bullet lines, concrete levels) — about the
+   SUBJECT coin of this article, not BTC unless the article is about BTC:
    - Support: $X / Resistance: $Y
    - Key indicator: RSI / EMA / MA200 reading or trend
    - Trigger: what to watch (above $X = bullish, below $Y = bearish)
    - Risk: stop-loss suggestion
 
-5. 👇 CÂU HỎI MỞ (1 line) — invite comment, A/B style:
-   "$BTC pump $80K hay dump $50K trước? Comment bên dưới 👇"
+5. 👇 CÂU HỎI MỞ (1 line) — invite comment, tailored to this article's
+   coin and price levels. Vary the phrasing each time.
 
 6. Coin tags + at most 2 hashtags.
 

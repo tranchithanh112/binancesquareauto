@@ -21,6 +21,7 @@
   },
   "dedup": {
     "similarity_threshold": 0.8,
+    "kw_threshold": 0.5,
     "cleanup_days": 30
   },
   "db_path": "data/bot.db",
