@@ -146,6 +146,205 @@ OUTPUT FORMAT (return EXACTLY this structure)
 """
 
 
+SIGNAL_TEMPLATE = """\
+You are a Vietnamese crypto-trading copywriter. Write a SHORT punchy
+"quick signal" post in BOTH Vietnamese and English. No preamble, no
+explanation — output ONLY the formatted block.
+
+SOURCE ARTICLE
+Source: {source}
+Title: {title}
+Body: {content}
+Subject coin: {coin_tags}
+
+STYLE — fast, factual, scannable. 3-5 short lines per language:
+1. ⚡ One-line signal headline with the subject coin + a concrete number
+   from the article (price level, %, volume). Punchy, not hyped/fabricated.
+2. 1-2 lines: the key level + what it means (support/resistance break,
+   RSI overbought/oversold, volume spike). SPECIFIC numbers only.
+3. 1 line action framing: "Chốt lời hay gồng?" style — but vary it.
+4. Coin tag once + at most 1 hashtag.
+5. Disclaimer + source:
+   Không phải lời khuyên đầu tư. Nguồn: {source}
+
+RULES
+- Each language ≤ 450 characters. Every sentence complete.
+- Numbers must be realistic and grounded in the article. NEVER fabricate
+  sensational predictions (no "x100", no made-up targets).
+- AT MOST 1 hashtag.
+
+OUTPUT FORMAT (exactly)
+---VI---
+<vietnamese signal>
+---EN---
+<english signal>
+---END---
+"""
+
+POLL_TEMPLATE = """\
+You are a Vietnamese crypto-trading copywriter. Write a POLL-style post in
+BOTH Vietnamese and English to drive comments. No preamble — output ONLY
+the formatted block.
+
+SOURCE ARTICLE
+Source: {source}
+Title: {title}
+Body: {content}
+Subject coin: {coin_tags}
+
+STYLE — short, engaging. Per language:
+1. 1-2 line setup: the situation + the subject coin + a concrete number.
+2. A clear A/B (or A/B/C) vote prompt with emojis, e.g.
+   "🟢 Tăng lên $X  hay  🔴 Giảm về $Y? Vote bằng comment 👇"
+   Use realistic levels tied to the article.
+3. Coin tag once + at most 1 hashtag.
+4. Disclaimer + source:
+   Không phải lời khuyên đầu tư. Nguồn: {source}
+
+RULES
+- Each language ≤ 450 characters. Complete sentences.
+- The two options must be realistic, opposite directions.
+- AT MOST 1 hashtag.
+
+OUTPUT FORMAT (exactly)
+---VI---
+<vietnamese poll>
+---EN---
+<english poll>
+---END---
+"""
+
+HOTTAKE_TEMPLATE = """\
+You are a Vietnamese crypto-trading copywriter. Write a bold "hot take"
+opinion post in BOTH Vietnamese and English that invites debate. No
+preamble — output ONLY the formatted block.
+
+SOURCE ARTICLE
+Source: {source}
+Title: {title}
+Body: {content}
+Subject coin: {coin_tags}
+
+STYLE — opinionated but grounded. Per language:
+1. 🔥 One bold, debatable claim about the subject coin, anchored to a real
+   fact/number from the article. Strong, NOT fabricated hype.
+2. 1-2 lines of reasoning (why you think so).
+3. A challenge line: "Bạn nghĩ tôi sai? Comment lý do 👇" — vary phrasing.
+4. Coin tag once + at most 1 hashtag.
+5. Disclaimer + source:
+   Không phải lời khuyên đầu tư. Nguồn: {source}
+
+RULES
+- Each language ≤ 500 characters. Complete sentences.
+- The claim must be defensible from the article, never invented.
+- AT MOST 1 hashtag.
+
+OUTPUT FORMAT (exactly)
+---VI---
+<vietnamese hot take>
+---EN---
+<english hot take>
+---END---
+"""
+
+ARTICLE_TEMPLATE = """\
+You are a Vietnamese crypto-trading copywriter. Write a long-form ARTICLE
+in BOTH Vietnamese and English, plus a Vietnamese headline. No preamble —
+output ONLY the formatted block.
+
+SOURCE ARTICLE
+Source: {source}
+Title: {title}
+Body: {content}
+Importance: high
+Coin tags: {coin_tags}
+
+HEADLINE — a punchy Vietnamese article title (≤ 80 chars), specific to
+this story, no clickbait fabrication.
+
+ARTICLE BODY STRUCTURE per language (same as analysis post):
+1. 🚨 HOOK opening line.
+2. 📌 SỰ KIỆN (3-4 sentences, concrete facts).
+3. 💥 TÁC ĐỘNG THỊ TRƯỜNG (3-4 sentences).
+4. 💡 QUAN ĐIỂM CỦA TÔI (3-4 sentences, strong stance).
+5. 📊 PHÂN TÍCH KỸ THUẬT (4-5 bullets, specific levels for the subject coin).
+6. 🎯 KỊCH BẢN 24-48H (bullish path / bearish path).
+7. 👇 CÂU HỎI MỞ.
+8. Coin tags + at most 2 hashtags.
+9. Disclaimer + source:
+   Đây là tin tức tổng hợp, không phải lời khuyên đầu tư.
+   Nguồn: {source}
+
+RULES
+- Each language body ≤ 1400 characters. Every sentence complete.
+- Specific TA numbers, definitive stance, no fence-sitting.
+- AT MOST 2 hashtags.
+
+OUTPUT FORMAT (exactly)
+---TITLE---
+<vietnamese headline>
+---VI---
+<vietnamese article body>
+---EN---
+<english article body>
+---END---
+"""
+
+
+# Rotation weights — user-approved mix.
+POST_TYPE_WEIGHTS = [("news_ta", 50), ("signal", 20), ("poll", 15), ("hot_take", 15)]
+
+
+def pick_post_type(rng=None) -> str:
+    """Weighted random post type per the approved 50/20/15/15 mix."""
+    import random
+    r = rng or random
+    types = [t for t, _ in POST_TYPE_WEIGHTS]
+    weights = [w for _, w in POST_TYPE_WEIGHTS]
+    return r.choices(types, weights=weights, k=1)[0]
+
+
+def content_type_for(post_type: str, importance: str) -> tuple[int, bool]:
+    """Return (binance_content_type, is_article). news_ta on a high-importance
+    story renders as a contentType=2 article with title + cover; everything
+    else is a contentType=1 short post."""
+    if post_type == "news_ta" and importance == "high":
+        return 2, True
+    return 1, False
+
+
+def build_typed_prompt(*, post_type: str, title: str, content: str,
+                       importance: str, coin_tags: list[str],
+                       source: str = "Unknown") -> str:
+    tags_str = " ".join(f"${t}" for t in coin_tags)
+    src = _pretty_source(source)
+    if post_type == "signal":
+        tmpl = SIGNAL_TEMPLATE
+    elif post_type == "poll":
+        tmpl = POLL_TEMPLATE
+    elif post_type == "hot_take":
+        tmpl = HOTTAKE_TEMPLATE
+    elif post_type == "news_ta" and importance == "high":
+        tmpl = ARTICLE_TEMPLATE
+    else:
+        tmpl = SHORT_TEMPLATE
+    return tmpl.format(title=title, content=content, importance=importance,
+                       coin_tags=tags_str, source=src)
+
+
+def parse_article(output: str) -> tuple[str, str, str]:
+    """Parse ---TITLE--- / ---VI--- / ---EN--- / ---END--- block.
+    Returns (title, vi, en)."""
+    try:
+        after_title = output.split("---TITLE---", 1)[1]
+        title_part, after_vi = after_title.split("---VI---", 1)
+        vi_part, after_en = after_vi.split("---EN---", 1)
+        en_part = after_en.split("---END---", 1)[0]
+        return title_part.strip(), vi_part.strip(), en_part.strip()
+    except (IndexError, ValueError) as e:
+        raise ValueError(f"Article output not in expected format: {e}")
+
+
 def _pretty_source(source: str) -> str:
     mapping = {
         "coindesk": "CoinDesk", "cointelegraph": "CoinTelegraph",

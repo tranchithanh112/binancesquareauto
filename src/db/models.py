@@ -26,7 +26,10 @@ CREATE TABLE IF NOT EXISTS posts (
     posted_at TEXT,
     error_msg TEXT,
     batch TEXT NOT NULL,
-    image_url TEXT
+    image_url TEXT,
+    post_type TEXT,
+    article_title TEXT,
+    content_type INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS dedup (
@@ -59,6 +62,12 @@ class Database:
             cols = {r[1] for r in c.execute("PRAGMA table_info(posts)").fetchall()}
             if "image_url" not in cols:
                 c.execute("ALTER TABLE posts ADD COLUMN image_url TEXT")
+            if "post_type" not in cols:
+                c.execute("ALTER TABLE posts ADD COLUMN post_type TEXT")
+            if "article_title" not in cols:
+                c.execute("ALTER TABLE posts ADD COLUMN article_title TEXT")
+            if "content_type" not in cols:
+                c.execute("ALTER TABLE posts ADD COLUMN content_type INTEGER")
 
     def insert_article(self, *, source: str, url: str, title: str, content: str,
                        scraped_at: str, importance: str) -> int:
@@ -82,13 +91,18 @@ class Database:
     def insert_post(self, *, article_id: int, content_vi: str, content_en: str,
                     coin_tags: list[str], format: str, batch: str,
                     scheduled_time: str | None = None,
-                    image_url: str | None = None) -> int:
+                    image_url: str | None = None,
+                    post_type: str | None = None,
+                    article_title: str | None = None,
+                    content_type: int | None = None) -> int:
         with self._conn() as c:
             cur = c.execute(
                 "INSERT INTO posts(article_id,content_vi,content_en,coin_tags,format,"
-                "status,scheduled_time,batch,image_url) VALUES (?,?,?,?,?,?,?,?,?)",
+                "status,scheduled_time,batch,image_url,post_type,article_title,"
+                "content_type) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                 (article_id, content_vi, content_en, json.dumps(coin_tags),
-                 format, "pending", scheduled_time, batch, image_url),
+                 format, "pending", scheduled_time, batch, image_url,
+                 post_type, article_title, content_type),
             )
             return cur.lastrowid
 

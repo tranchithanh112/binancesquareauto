@@ -23,7 +23,10 @@ from src.scraper.browser_scraper import (
     reuters_recipe, coingecko_recipe, google_news_recipe,
 )
 from src.scraper.x_scraper import x_profile_recipe
-from src.rewriter.prompts import build_prompt, parse_output
+from src.rewriter.prompts import (
+    build_prompt, parse_output, parse_article,
+    pick_post_type, content_type_for, build_typed_prompt,
+)
 from src.rewriter.classifier import (
     classify_importance, extract_coin_tags, primary_coin,
 )
@@ -305,46 +308,58 @@ def run_auto_rewrite(cfg, db: Database, max_rewrites: int = 10) -> dict:
             continue
         text = f"{a['title']} {content}"
         coin_tags = extract_coin_tags(text)
-        prompt = build_prompt(
-            title=a["title"], content=content,
-            importance=a["importance"], coin_tags=coin_tags,
-            source=a["source"],
+
+        # Pick a post type per the approved mix (50/20/15/15). High-importance
+        # news_ta renders as a contentType=2 article with title + cover.
+        post_type = pick_post_type()
+        content_type, is_article = content_type_for(post_type, a["importance"])
+        prompt = build_typed_prompt(
+            post_type=post_type, title=a["title"], content=content,
+            importance=a["importance"], coin_tags=coin_tags, source=a["source"],
         )
-        log.info(f"rewriting article {a['id']}: {a['title'][:60]}")
+        log.info(f"rewriting article {a['id']} [{post_type}/ct{content_type}]: {a['title'][:50]}")
         output, err = claude_rewrite(prompt)
         if err:
             log.error(f"article {a['id']}: claude rewrite failed: {err}")
             failed += 1
             continue
+
+        article_title = None
+        cap = 1400 if is_article else 1000
         try:
-            vi, en = parse_output(output)
+            if is_article:
+                article_title, vi, en = parse_article(output)
+            else:
+                vi, en = parse_output(output)
         except ValueError as e:
-            log.error(f"article {a['id']}: parse_output failed: {e}")
+            log.error(f"article {a['id']}: parse failed: {e}")
             failed += 1
             continue
 
-        # Quality check: if either lang exceeds 1000 chars, retry once
-        # with a stricter "shorten" addendum so Claude rewrites cleanly
-        # instead of letting Python truncate mid-sentence.
-        if len(vi) > 1000 or len(en) > 1000:
+        # Quality check: if either lang exceeds the cap, retry once tighter so
+        # Claude rewrites cleanly instead of Python truncating mid-sentence.
+        if len(vi) > cap or len(en) > cap:
             log.warning(
                 f"article {a['id']}: overflow vi={len(vi)} en={len(en)}, retrying tighter"
             )
             tighter = (
                 prompt
-                + "\n\nIMPORTANT RETRY: previous output was too long. "
-                "Each language section MUST be at most 950 characters. "
-                "Drop bullet detail, keep every sentence complete, ensure "
-                "disclaimer + source line are present and full."
+                + f"\n\nIMPORTANT RETRY: previous output was too long. "
+                f"Each language section MUST be at most {cap - 50} characters. "
+                "Drop detail, keep every sentence complete, keep disclaimer + source."
             )
             output2, err2 = claude_rewrite(tighter)
             if not err2:
                 try:
-                    vi2, en2 = parse_output(output2)
-                    if len(vi2) <= 1000 and len(en2) <= 1000:
+                    if is_article:
+                        t2, vi2, en2 = parse_article(output2)
+                    else:
+                        vi2, en2 = parse_output(output2)
+                        t2 = None
+                    if (len(vi2) + len(en2)) < (len(vi) + len(en)):
                         vi, en = vi2, en2
-                    elif (len(vi2) + len(en2)) < (len(vi) + len(en)):
-                        vi, en = vi2, en2
+                        if is_article and t2:
+                            article_title = t2
                 except ValueError:
                     pass
 
@@ -387,8 +402,13 @@ def run_auto_rewrite(cfg, db: Database, max_rewrites: int = 10) -> dict:
             article_id=a["id"], content_vi=vi, content_en=en,
             coin_tags=coin_tags, format=fmt, batch="auto",
             scheduled_time=None, image_url=image_url,
+            post_type=post_type, article_title=article_title,
+            content_type=content_type,
         )
-        log.info(f"article {a['id']} -> post {pid} (image={'yes' if image_url else 'no'})")
+        log.info(
+            f"article {a['id']} -> post {pid} "
+            f"[{post_type}/ct{content_type}] image={'yes' if image_url else 'no'}"
+        )
         rewritten += 1
 
     return {"rewritten": rewritten, "failed": failed, "with_image": with_image}
@@ -399,7 +419,7 @@ def post_next(cfg, db: Database) -> dict:
     Uses pre-uploaded image_url when present. Returns {status, post_id,
     share_link, error}."""
     from src.runners.binance_openapi import (
-        post_text, post_text_with_image_urls,
+        post_text, post_text_with_image_urls, post_article,
     )
     from src.poster.binance_poster import record_post_result
     log = logging.getLogger("post_next")
@@ -414,17 +434,24 @@ def post_next(cfg, db: Database) -> dict:
         return {"status": "empty", "post_id": None, "error": None}
 
     pid = row["id"]
+    keys = row.keys()
     body = f"{row['content_vi']}\n\n---\n\n{row['content_en']}"
-    image_url = row["image_url"] if "image_url" in row.keys() else None
-    if image_url:
+    image_url = row["image_url"] if "image_url" in keys else None
+    content_type = row["content_type"] if "content_type" in keys else None
+    article_title = row["article_title"] if "article_title" in keys else None
+    api_key = cfg.binance_square_openapi_key
+
+    if content_type == 2 and article_title:
+        status, err, data = post_article(
+            api_key=api_key, title=article_title,
+            body_text=body, cover_url=image_url,
+        )
+    elif image_url:
         status, err, data = post_text_with_image_urls(
-            api_key=cfg.binance_square_openapi_key,
-            body_text=body, image_urls=[image_url],
+            api_key=api_key, body_text=body, image_urls=[image_url],
         )
     else:
-        status, err, data = post_text(
-            api_key=cfg.binance_square_openapi_key, body_text=body,
-        )
+        status, err, data = post_text(api_key=api_key, body_text=body)
     posted_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     record_post_result(db, post_id=pid, status=status,
                        posted_at=posted_at, error_msg=err)

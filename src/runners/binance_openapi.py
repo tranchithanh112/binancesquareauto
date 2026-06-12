@@ -128,6 +128,26 @@ def post_text(*, api_key: str, body_text: str,
     return "posted", None, data
 
 
+def post_article(*, api_key: str, title: str, body_text: str,
+                 cover_url: Optional[str] = None,
+                 timeout: int = 30) -> tuple[str, Optional[str], Optional[dict]]:
+    """Publish a long-form article (contentType=2) with title + optional
+    cover image URL (already uploaded to Binance)."""
+    if not api_key:
+        return "failed", "missing api key", None
+    payload = {
+        "contentType": 2,
+        "title": title[:120],
+        "bodyTextOnly": _prep_body(body_text),
+    }
+    if cover_url:
+        payload["cover"] = cover_url
+    data, err = _api(ADD_CONTENT_URL, api_key, payload, timeout=timeout)
+    if err:
+        return "failed", err, None
+    return "posted", None, data
+
+
 def _content_type_for(path: str) -> str:
     ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
     return CONTENT_TYPE_MAP.get(ext, "application/octet-stream")
