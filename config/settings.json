@@ -24,6 +24,7 @@
     "kw_threshold": 0.5,
     "cleanup_days": 30
   },
+  "square_uid": "b638WwJ-d7fFmge1NEag0Q",
   "db_path": "data/bot.db",
   "log_path": "logs/bot.log"
 }

@@ -29,7 +29,20 @@ CREATE TABLE IF NOT EXISTS posts (
     image_url TEXT,
     post_type TEXT,
     article_title TEXT,
-    content_type INTEGER
+    content_type INTEGER,
+    binance_id TEXT
+);
+
+CREATE TABLE IF NOT EXISTS post_stats (
+    binance_id TEXT PRIMARY KEY,
+    post_id INTEGER,
+    views INTEGER,
+    likes INTEGER,
+    comments INTEGER,
+    shares INTEGER,
+    reactions INTEGER,
+    bookmarks INTEGER,
+    collected_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS dedup (
@@ -68,6 +81,8 @@ class Database:
                 c.execute("ALTER TABLE posts ADD COLUMN article_title TEXT")
             if "content_type" not in cols:
                 c.execute("ALTER TABLE posts ADD COLUMN content_type INTEGER")
+            if "binance_id" not in cols:
+                c.execute("ALTER TABLE posts ADD COLUMN binance_id TEXT")
 
     def insert_article(self, *, source: str, url: str, title: str, content: str,
                        scraped_at: str, importance: str) -> int:
@@ -115,6 +130,68 @@ class Database:
                 "error_msg=COALESCE(?,error_msg) WHERE id=?",
                 (status, posted_at, error_msg, post_id),
             )
+
+    def set_binance_id(self, post_id: int, binance_id: str) -> None:
+        with self._conn() as c:
+            c.execute("UPDATE posts SET binance_id=? WHERE id=?",
+                      (binance_id, post_id))
+
+    def find_unmatched_post_by_body(self, body: str) -> dict | None:
+        """Best-effort backfill: find a posted row WITHOUT a binance_id whose
+        Vietnamese content appears at the start of the given API body text.
+        Matches on the first 40 chars of content_vi."""
+        if not body:
+            return None
+        with self._conn() as c:
+            rows = c.execute(
+                "SELECT id, content_vi, post_type FROM posts "
+                "WHERE binance_id IS NULL AND status='posted'"
+            ).fetchall()
+        body_norm = " ".join(body.split())[:200].lower()
+        for r in rows:
+            head = " ".join((r["content_vi"] or "").split())[:40].lower()
+            if head and head in body_norm:
+                return {"post_id": r["id"], "post_type": r["post_type"]}
+        return None
+
+    def map_binance_to_post(self) -> dict[str, dict]:
+        """Return {binance_id: {post_id, post_type}} for posts that have a
+        Binance content id, so stats can be matched back."""
+        with self._conn() as c:
+            rows = c.execute(
+                "SELECT id, binance_id, post_type FROM posts "
+                "WHERE binance_id IS NOT NULL"
+            ).fetchall()
+            return {r["binance_id"]: {"post_id": r["id"], "post_type": r["post_type"]}
+                    for r in rows}
+
+    def upsert_stats(self, *, binance_id: str, post_id: int | None,
+                     views: int, likes: int, comments: int, shares: int,
+                     reactions: int, bookmarks: int, collected_at: str) -> None:
+        with self._conn() as c:
+            c.execute(
+                "INSERT INTO post_stats(binance_id,post_id,views,likes,comments,"
+                "shares,reactions,bookmarks,collected_at) VALUES (?,?,?,?,?,?,?,?,?) "
+                "ON CONFLICT(binance_id) DO UPDATE SET post_id=excluded.post_id,"
+                "views=excluded.views,likes=excluded.likes,comments=excluded.comments,"
+                "shares=excluded.shares,reactions=excluded.reactions,"
+                "bookmarks=excluded.bookmarks,collected_at=excluded.collected_at",
+                (binance_id, post_id, views, likes, comments, shares,
+                 reactions, bookmarks, collected_at),
+            )
+
+    def stats_by_post_type(self) -> list[dict]:
+        """Aggregate engagement averages per post_type (joined via post_id)."""
+        with self._conn() as c:
+            rows = c.execute(
+                "SELECT p.post_type AS post_type, COUNT(*) AS n, "
+                "AVG(s.views) AS avg_views, AVG(s.likes) AS avg_likes, "
+                "AVG(s.comments) AS avg_comments, AVG(s.reactions) AS avg_reactions "
+                "FROM post_stats s JOIN posts p ON p.id = s.post_id "
+                "WHERE p.post_type IS NOT NULL "
+                "GROUP BY p.post_type ORDER BY avg_views DESC"
+            ).fetchall()
+            return [dict(r) for r in rows]
 
     def list_posts_by_batch(self, batch: str) -> list[dict]:
         with self._conn() as c:

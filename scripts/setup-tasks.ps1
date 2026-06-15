@@ -95,5 +95,13 @@ New-BnTask -Name "BinanceSquareBot-Summary" `
     -CmdArgs @("-m", "src.main", "--summary") `
     -Triggers @(New-ScheduledTaskTrigger -Daily -At "23:55")
 
+# --- Engagement stats collection (2x/day) ---
+New-BnTask -Name "BinanceSquareBot-Stats" `
+    -CmdArgs @("-m", "src.main", "--collect-stats") `
+    -Triggers @(
+        (New-ScheduledTaskTrigger -Daily -At "13:00"),
+        (New-ScheduledTaskTrigger -Daily -At "23:40")
+    )
+
 Write-Host ""
 Write-Host "Done. List tasks with: Get-ScheduledTask -TaskName 'BinanceSquareBot-*'"

@@ -16,6 +16,7 @@ class Config:
     telegram_bot_token: str
     telegram_chat_id: str
     binance_square_openapi_key: str = ""
+    square_uid: str = ""
 
 
 def load_config(settings_path: Path | str = "config/settings.json",
@@ -51,4 +52,5 @@ def load_config(settings_path: Path | str = "config/settings.json",
         telegram_bot_token=token,
         telegram_chat_id=chat,
         binance_square_openapi_key=bn_key or "",
+        square_uid=settings.get("square_uid", ""),
     )

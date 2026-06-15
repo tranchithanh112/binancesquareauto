@@ -455,9 +455,54 @@ def post_next(cfg, db: Database) -> dict:
     posted_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     record_post_result(db, post_id=pid, status=status,
                        posted_at=posted_at, error_msg=err)
+    # Store Binance content id so engagement stats can be matched later.
+    if status == "posted" and data and data.get("id"):
+        try:
+            db.set_binance_id(pid, str(data["id"]))
+        except Exception:
+            pass
     log.info(f"post {pid}: {status} {err or ''} {data or ''}")
     share_link = (data or {}).get("shareLink") if data else None
     return {"status": status, "post_id": pid, "share_link": share_link, "error": err}
+
+
+def collect_stats(cfg, db: Database) -> dict:
+    """Fetch engagement stats from the public Square profile, upsert into
+    post_stats, return per-post-type averages."""
+    from src.runners.square_stats import iter_profile_stats
+    log = logging.getLogger("stats")
+    uid = cfg.square_uid
+    if not uid:
+        log.warning("square_uid not configured")
+        return {"matched": 0, "by_type": []}
+
+    mapping = db.map_binance_to_post()  # {binance_id: {post_id, post_type}}
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    matched = 0
+    total = 0
+    try:
+        for s in iter_profile_stats(uid, max_pages=10):
+            total += 1
+            m = mapping.get(s["binance_id"])
+            if m is None:
+                # Backfill: match historical posts by content, store binance_id
+                m = db.find_unmatched_post_by_body(s.get("body", ""))
+                if m:
+                    db.set_binance_id(m["post_id"], s["binance_id"])
+            db.upsert_stats(
+                binance_id=s["binance_id"],
+                post_id=m["post_id"] if m else None,
+                views=s["views"], likes=s["likes"], comments=s["comments"],
+                shares=s["shares"], reactions=s["reactions"],
+                bookmarks=s["bookmarks"], collected_at=now_iso,
+            )
+            if m:
+                matched += 1
+    except Exception as e:
+        log.error(f"stats fetch failed: {e}")
+    by_type = db.stats_by_post_type()
+    log.info(f"stats: scanned {total}, matched {matched} to our posts")
+    return {"matched": matched, "scanned": total, "by_type": by_type}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -472,6 +517,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="Run Claude CLI on unposted articles, persist as pending posts with cover image")
     parser.add_argument("--max-rewrites", type=int, default=10,
                         help="Max articles to rewrite per --auto-rewrite invocation")
+    parser.add_argument("--collect-stats", action="store_true",
+                        help="Fetch public-profile engagement stats + Telegram report")
     parser.add_argument("--settings", default="config/settings.json")
     parser.add_argument("--env", default="config/.env")
     args = parser.parse_args(argv)
@@ -491,6 +538,34 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         except Exception as e:
             logging.getLogger("main").exception("scrape failed")
+            return 1
+
+    if getattr(args, "collect_stats", False):
+        try:
+            res = collect_stats(cfg, db)
+            by_type = res.get("by_type", [])
+            if by_type:
+                lines = ["📈 Engagement theo loại post (avg):"]
+                for r in by_type:
+                    lines.append(
+                        f"• {r['post_type']}: {r['n']} bài | "
+                        f"👁 {r['avg_views']:.0f}  ❤️ {r['avg_likes']:.1f}  "
+                        f"💬 {r['avg_comments']:.1f}  🔥 {r['avg_reactions']:.1f}"
+                    )
+                lines.append(f"\nĐã match {res.get('matched',0)}/{res.get('scanned',0)} bài.")
+                msg = "\n".join(lines)
+            else:
+                msg = (f"📈 Stats: scan {res.get('scanned',0)} bài, "
+                       f"match {res.get('matched',0)}. Chưa đủ data theo loại.")
+            try:
+                send_message(token=cfg.telegram_bot_token,
+                             chat_id=cfg.telegram_chat_id, text=msg)
+            except Exception:
+                pass
+            logging.getLogger("main").info(f"collect_stats: {res}")
+            return 0
+        except Exception as e:
+            logging.getLogger("main").exception("collect_stats failed")
             return 1
 
     if getattr(args, "auto_rewrite", False):
