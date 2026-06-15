@@ -435,7 +435,10 @@ def post_next(cfg, db: Database) -> dict:
 
     pid = row["id"]
     keys = row.keys()
-    body = f"{row['content_vi']}\n\n---\n\n{row['content_en']}"
+    # VN-only posts store content_en="". Join with separator only when an
+    # English half actually exists (legacy bilingual rows).
+    en = (row["content_en"] or "").strip()
+    body = f"{row['content_vi']}\n\n---\n\n{en}" if en else row["content_vi"]
     image_url = row["image_url"] if "image_url" in keys else None
     content_type = row["content_type"] if "content_type" in keys else None
     article_title = row["article_title"] if "article_title" in keys else None

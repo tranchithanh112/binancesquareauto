@@ -8,27 +8,27 @@ from src.rewriter.prompts import (
 
 def test_build_prompt_short_includes_title_and_tags():
     p = build_prompt(title="T", content="C", importance="normal", coin_tags=["BTC", "ETH"])
-    assert "T" in p and "$BTC $ETH" in p and "HOOK" in p
+    assert "T" in p and "$BTC $ETH" in p and "TIẾNG VIỆT" in p
 
 
 def test_build_prompt_long_for_high_importance():
     p = build_prompt(title="T", content="C", importance="high", coin_tags=["BTC"])
-    assert "ANALYSIS" in p
+    assert "---TITLE---" in p  # article format for high importance
 
 
-def test_parse_output_extracts_vi_and_en():
-    raw = "intro---VI---\nXin chao\n---EN---\nHello\n---END---tail"
+def test_parse_output_vn_only():
+    raw = "intro---VI---\nXin chao ae\n---END---tail"
     vi, en = parse_output(raw)
-    assert vi == "Xin chao"
-    assert en == "Hello"
+    assert vi == "Xin chao ae"
+    assert en == ""
 
 
-def test_parse_article_extracts_title_vi_en():
-    raw = "x---TITLE---\nTieu de\n---VI---\nXin chao\n---EN---\nHello\n---END---y"
+def test_parse_article_extracts_title_and_body():
+    raw = "x---TITLE---\nTieu de\n---VI---\nThan bai\n---END---y"
     title, vi, en = parse_article(raw)
     assert title == "Tieu de"
-    assert vi == "Xin chao"
-    assert en == "Hello"
+    assert vi == "Than bai"
+    assert en == ""
 
 
 def test_pick_post_type_returns_known_type():
@@ -47,9 +47,9 @@ def test_content_type_for_article_only_high_news_ta():
 
 def test_build_typed_prompt_variants():
     base = dict(title="T", content="C", importance="normal", coin_tags=["SOL"])
-    assert "signal" in build_typed_prompt(post_type="signal", **base).lower()
-    assert "poll" in build_typed_prompt(post_type="poll", **base).lower()
-    assert "hot take" in build_typed_prompt(post_type="hot_take", **base).lower()
+    assert "nhận định nhanh" in build_typed_prompt(post_type="signal", **base)
+    assert "hỏi ý kiến" in build_typed_prompt(post_type="poll", **base)
+    assert "quan điểm mạnh" in build_typed_prompt(post_type="hot_take", **base)
     art = build_typed_prompt(post_type="news_ta", title="T", content="C",
                              importance="high", coin_tags=["BTC"])
     assert "---TITLE---" in art
