@@ -26,6 +26,30 @@ TICKER_TO_CG = {
 }
 
 
+def get_prices(tickers: list[str], *, timeout: int = 20) -> dict[str, float]:
+    """Live USD price for each known ticker via CoinGecko /simple/price.
+    Returns {TICKER: price}. Unknown/failed tickers are omitted."""
+    ids = {TICKER_TO_CG[t.upper()]: t.upper()
+           for t in tickers if t.upper() in TICKER_TO_CG}
+    if not ids:
+        return {}
+    url = f"{COINGECKO_BASE}/simple/price"
+    try:
+        resp = requests.get(url, params={"ids": ",".join(ids), "vs_currencies": "usd"},
+                            timeout=timeout, headers={"User-Agent": "Mozilla/5.0"})
+        if not resp.ok:
+            return {}
+        data = resp.json()
+    except Exception:
+        return {}
+    out: dict[str, float] = {}
+    for coin_id, ticker in ids.items():
+        price = (data.get(coin_id) or {}).get("usd")
+        if price is not None:
+            out[ticker] = float(price)
+    return out
+
+
 def _fetch_prices(coin_id: str, days: int = 7,
                   timeout: int = 30) -> tuple[Optional[list], Optional[str]]:
     url = f"{COINGECKO_BASE}/coins/{coin_id}/market_chart"

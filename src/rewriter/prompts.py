@@ -26,7 +26,12 @@ GIỌNG VĂN — BẮT BUỘC (đây là phần quan trọng nhất):
 - Tối đa 1 hashtag, chỉ khi thật tự nhiên. Thường thì khỏi.
 - Kết bằng câu mời tương tác tự nhiên ("ae nghĩ sao?", "có gì hỏi mình bên
   dưới nhé", "ae đang hold con nào?").
-- Số liệu phải thực tế, KHÔNG bịa giá viển vông. Không hype "x100".
+- CỰC KỲ QUAN TRỌNG VỀ GIÁ: CHỈ được dùng đúng con số giá thực được cung
+  cấp ở phần "GIÁ THỰC HIỆN TẠI". TUYỆT ĐỐI KHÔNG tự bịa/đoán giá từ trí nhớ
+  (vd KHÔNG viết BTC 105k nếu giá thực là 65k). Nếu phần giá để trống thì
+  ĐỪNG nêu con số giá cụ thể, chỉ nói định tính.
+- Vùng giá vào/ra phải neo quanh giá thực (vd giá thực 65k thì canh 62k-60k,
+  không nói 98k-100k). Không hype "x100".
 - Viết liền mạch, KHÔNG sáo rỗng, không mở bài kiểu "Thị trường crypto hôm nay".
 """
 
@@ -42,6 +47,7 @@ Nguồn: {source}
 Tiêu đề: {title}
 Nội dung: {content}
 Coin liên quan: {coin_tags}
+GIÁ THỰC HIỆN TẠI (USD), DÙNG ĐÚNG SỐ NÀY: {prices}
 
 YÊU CẦU BÀI NÀY (tin tức + góc nhìn):
 - Mở đầu bằng nhận định/cảm nhận cá nhân về tin này (không tóm tắt khô khan).
@@ -68,6 +74,7 @@ Nguồn: {source}
 Tiêu đề: {title}
 Nội dung: {content}
 Coin chính: {coin_tags}
+GIÁ THỰC HIỆN TẠI (USD), DÙNG ĐÚNG SỐ NÀY: {prices}
 
 YÊU CẦU (ngắn, sắc):
 - 3-5 câu thôi. Một nhận định nhanh về {coin_tags} với số liệu thật từ tin.
@@ -93,6 +100,7 @@ Nguồn: {source}
 Tiêu đề: {title}
 Nội dung: {content}
 Coin chính: {coin_tags}
+GIÁ THỰC HIỆN TẠI (USD), DÙNG ĐÚNG SỐ NÀY: {prices}
 
 YÊU CẦU:
 - 1-2 câu dẫn dắt tình huống về {coin_tags} với 1 con số cụ thể.
@@ -117,6 +125,7 @@ Nguồn: {source}
 Tiêu đề: {title}
 Nội dung: {content}
 Coin chính: {coin_tags}
+GIÁ THỰC HIỆN TẠI (USD), DÙNG ĐÚNG SỐ NÀY: {prices}
 
 YÊU CẦU:
 - 1 quan điểm mạnh, hơi ngược số đông, về {coin_tags} — neo vào 1 fact thật từ
@@ -142,6 +151,7 @@ Nguồn: {source}
 Tiêu đề: {title}
 Nội dung: {content}
 Coin liên quan: {coin_tags}
+GIÁ THỰC HIỆN TẠI (USD), DÙNG ĐÚNG SỐ NÀY: {prices}
 
 TIÊU ĐỀ: một tiêu đề tiếng Việt giật nhẹ, cụ thể với tin này (≤ 80 ký tự),
 không bịa, không clickbait lố.
@@ -201,9 +211,19 @@ def content_type_for(post_type: str, importance: str) -> tuple[int, bool]:
     return 1, False
 
 
+def _format_prices(prices: dict[str, float] | None) -> str:
+    if not prices:
+        return "(không có dữ liệu giá — đừng nêu con số giá cụ thể)"
+    parts = []
+    for t, p in prices.items():
+        parts.append(f"${t}=${p:,.2f}" if p < 100 else f"${t}=${p:,.0f}")
+    return ", ".join(parts)
+
+
 def build_typed_prompt(*, post_type: str, title: str, content: str,
                        importance: str, coin_tags: list[str],
-                       source: str = "Unknown") -> str:
+                       source: str = "Unknown",
+                       prices: dict[str, float] | None = None) -> str:
     tags_str = " ".join(f"${t}" for t in coin_tags)
     src = _pretty_source(source)
     if post_type == "signal":
@@ -217,15 +237,18 @@ def build_typed_prompt(*, post_type: str, title: str, content: str,
     else:
         tmpl = SHORT_TEMPLATE
     return tmpl.format(voice=VOICE, title=title, content=content,
-                       importance=importance, coin_tags=tags_str, source=src)
+                       importance=importance, coin_tags=tags_str, source=src,
+                       prices=_format_prices(prices))
 
 
 def build_prompt(*, title: str, content: str, importance: str,
-                 coin_tags: list[str], source: str = "Unknown") -> str:
+                 coin_tags: list[str], source: str = "Unknown",
+                 prices: dict[str, float] | None = None) -> str:
     """Legacy entry — maps to the news_ta typed prompt."""
     return build_typed_prompt(
         post_type="news_ta", title=title, content=content,
         importance=importance, coin_tags=coin_tags, source=source,
+        prices=prices,
     )
 
 

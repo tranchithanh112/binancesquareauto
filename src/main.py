@@ -309,6 +309,12 @@ def run_auto_rewrite(cfg, db: Database, max_rewrites: int = 10) -> dict:
         text = f"{a['title']} {content}"
         coin_tags = extract_coin_tags(text)
 
+        # Fetch LIVE prices for the coins so the model never invents a number
+        # (it has no real-time data and will otherwise hallucinate, e.g. BTC
+        # 105k when spot is 65k).
+        from src.runners.coingecko_chart import get_prices
+        prices = get_prices(coin_tags[:4])
+
         # Pick a post type per the approved mix (50/20/15/15). High-importance
         # news_ta renders as a contentType=2 article with title + cover.
         post_type = pick_post_type()
@@ -316,6 +322,7 @@ def run_auto_rewrite(cfg, db: Database, max_rewrites: int = 10) -> dict:
         prompt = build_typed_prompt(
             post_type=post_type, title=a["title"], content=content,
             importance=a["importance"], coin_tags=coin_tags, source=a["source"],
+            prices=prices,
         )
         log.info(f"rewriting article {a['id']} [{post_type}/ct{content_type}]: {a['title'][:50]}")
         output, err = claude_rewrite(prompt)
