@@ -59,33 +59,29 @@ function New-BnTask {
     Write-Host "  registered: $Name"
 }
 
-# --- Scrape: 4x/day ---
+# --- Scrape: 2x/day (lower volume — quality over spam) ---
 $scrapeTriggers = @(
-    (New-ScheduledTaskTrigger -Daily -At "06:00"),
-    (New-ScheduledTaskTrigger -Daily -At "12:00"),
-    (New-ScheduledTaskTrigger -Daily -At "18:00"),
-    (New-ScheduledTaskTrigger -Daily -At "22:00")
+    (New-ScheduledTaskTrigger -Daily -At "07:00"),
+    (New-ScheduledTaskTrigger -Daily -At "19:00")
 )
 New-BnTask -Name "BinanceSquareBot-Scrape" `
     -CmdArgs @("-m", "src.main", "--scrape") `
     -Triggers $scrapeTriggers
 
-# --- Rewrite: 5 min after each scrape ---
+# --- Rewrite: 10 min after each scrape, max 6 each = ~12/day capacity ---
 $rewriteTriggers = @(
-    (New-ScheduledTaskTrigger -Daily -At "06:05"),
-    (New-ScheduledTaskTrigger -Daily -At "12:05"),
-    (New-ScheduledTaskTrigger -Daily -At "18:05"),
-    (New-ScheduledTaskTrigger -Daily -At "22:05")
+    (New-ScheduledTaskTrigger -Daily -At "07:10"),
+    (New-ScheduledTaskTrigger -Daily -At "19:10")
 )
 New-BnTask -Name "BinanceSquareBot-Rewrite" `
-    -CmdArgs @("-m", "src.main", "--auto-rewrite", "--max-rewrites", "12") `
+    -CmdArgs @("-m", "src.main", "--auto-rewrite", "--max-rewrites", "6") `
     -Triggers $rewriteTriggers
 
-# --- Post: every 30 min from 06:00 to 23:30 ---
-$postTrigger = New-ScheduledTaskTrigger -Daily -At "06:00"
-$postTrigger.Repetition = (New-ScheduledTaskTrigger -Once -At "06:00" `
-    -RepetitionInterval (New-TimeSpan -Minutes 30) `
-    -RepetitionDuration (New-TimeSpan -Hours 17 -Minutes 30)).Repetition
+# --- Post: every 90 min from 07:30 to ~22:30 = ~11 posts/day ---
+$postTrigger = New-ScheduledTaskTrigger -Daily -At "07:30"
+$postTrigger.Repetition = (New-ScheduledTaskTrigger -Once -At "07:30" `
+    -RepetitionInterval (New-TimeSpan -Minutes 90) `
+    -RepetitionDuration (New-TimeSpan -Hours 15)).Repetition
 New-BnTask -Name "BinanceSquareBot-Post" `
     -CmdArgs @("-m", "src.main", "--post-next") `
     -Triggers @($postTrigger)
