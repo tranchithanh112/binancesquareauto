@@ -529,6 +529,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="Max articles to rewrite per --auto-rewrite invocation")
     parser.add_argument("--collect-stats", action="store_true",
                         help="Fetch public-profile engagement stats + Telegram report")
+    parser.add_argument("--auto-tune", action="store_true",
+                        help="Weekly: re-weight post types by engagement + Telegram report")
     parser.add_argument("--settings", default="config/settings.json")
     parser.add_argument("--env", default="config/.env")
     args = parser.parse_args(argv)
@@ -576,6 +578,40 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         except Exception as e:
             logging.getLogger("main").exception("collect_stats failed")
+            return 1
+
+    if getattr(args, "auto_tune", False):
+        try:
+            from src import tuning
+            # Refresh stats first so tuning sees the latest numbers.
+            collect_stats(cfg, db)
+            by_type = db.stats_by_post_type()
+            res = tuning.auto_tune(by_type)
+            if not res.get("changed"):
+                msg = f"🔧 Auto-tune: {res.get('reason','chưa đủ data')}, giữ nguyên tỷ lệ."
+            else:
+                lines = ["🔧 Auto-tune tuần — tỷ lệ post type mới:"]
+                for t in res["weights"]:
+                    old = res["old"].get(t, "?")
+                    sc = res["scores"].get(t, 0)
+                    lines.append(f"• {t}: {old}% → {res['weights'][t]}%  (score {sc})")
+                trend = ("📈 engagement tăng so tuần trước"
+                         if res.get("improving") else
+                         "📉 engagement KHÔNG tăng — cân nhắc đổi format/giọng văn thủ công")
+                prev = res.get("prev_avg_score")
+                lines.append(f"\nĐiểm TB: {res['avg_score']}"
+                             + (f" (tuần trước {prev})" if prev is not None else ""))
+                lines.append(trend)
+                msg = "\n".join(lines)
+            try:
+                send_message(token=cfg.telegram_bot_token,
+                             chat_id=cfg.telegram_chat_id, text=msg)
+            except Exception:
+                pass
+            logging.getLogger("main").info(f"auto_tune: {res}")
+            return 0
+        except Exception as e:
+            logging.getLogger("main").exception("auto_tune failed")
             return 1
 
     if getattr(args, "auto_rewrite", False):

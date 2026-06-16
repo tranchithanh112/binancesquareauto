@@ -199,11 +199,20 @@ POST_TYPE_WEIGHTS = [("news_ta", 50), ("signal", 20), ("poll", 15), ("hot_take",
 
 
 def pick_post_type(rng=None) -> str:
-    """Weighted random post type per the approved 50/20/15/15 mix."""
+    """Weighted random post type. Reads auto-tuned weights from
+    data/tuning.json when present, else the default 50/20/15/15 mix."""
     import random
     r = rng or random
-    types = [t for t, _ in POST_TYPE_WEIGHTS]
-    weights = [w for _, w in POST_TYPE_WEIGHTS]
+    try:
+        from src.tuning import load_weights
+        w = load_weights()
+        types = list(w.keys())
+        weights = list(w.values())
+        if not types:
+            raise ValueError
+    except Exception:
+        types = [t for t, _ in POST_TYPE_WEIGHTS]
+        weights = [x for _, x in POST_TYPE_WEIGHTS]
     return r.choices(types, weights=weights, k=1)[0]
 
 

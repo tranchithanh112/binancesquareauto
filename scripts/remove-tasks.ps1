@@ -5,7 +5,8 @@ $names = @(
     "BinanceSquareBot-Rewrite",
     "BinanceSquareBot-Post",
     "BinanceSquareBot-Summary",
-    "BinanceSquareBot-Stats"
+    "BinanceSquareBot-Stats",
+    "BinanceSquareBot-Tune"
 )
 foreach ($n in $names) {
     if (Get-ScheduledTask -TaskName $n -ErrorAction SilentlyContinue) {

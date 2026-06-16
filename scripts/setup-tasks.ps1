@@ -91,6 +91,11 @@ New-BnTask -Name "BinanceSquareBot-Summary" `
     -CmdArgs @("-m", "src.main", "--summary") `
     -Triggers @(New-ScheduledTaskTrigger -Daily -At "23:55")
 
+# --- Weekly auto-tune (Sunday 23:50) — re-weight post types by engagement ---
+New-BnTask -Name "BinanceSquareBot-Tune" `
+    -CmdArgs @("-m", "src.main", "--auto-tune") `
+    -Triggers @(New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At "23:50")
+
 # --- Engagement stats collection (2x/day) ---
 New-BnTask -Name "BinanceSquareBot-Stats" `
     -CmdArgs @("-m", "src.main", "--collect-stats") `
