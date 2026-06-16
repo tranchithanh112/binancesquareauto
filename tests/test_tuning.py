@@ -33,6 +33,37 @@ def test_auto_tune_no_stats(tmp_path):
     assert res["changed"] is False
 
 
+def test_load_style_default_empty(tmp_path):
+    assert tuning.load_style(tmp_path / "nope.json") == ""
+
+
+def test_save_and_load_style(tmp_path):
+    p = tmp_path / "tuning.json"
+    tuning.save_style("Viết ngắn, mở bài bằng câu hỏi.", p)
+    assert "ngắn" in tuning.load_style(p)
+
+
+def test_evolve_style_parses_hint():
+    best = [{"post_type": "signal", "content_vi": "x", "views": 300,
+             "likes": 5, "comments": 2, "reactions": 5}]
+    worst = [{"post_type": "news_ta", "content_vi": "y", "views": 50,
+              "likes": 0, "comments": 0, "reactions": 0}]
+    def fake_claude(prompt):
+        return "blah ---HINT---\nViết ngắn 400 chữ, mở bài giật.\n---END--- tail", None
+    hint = tuning.evolve_style(best, worst, "", fake_claude)
+    assert hint == "Viết ngắn 400 chữ, mở bài giật."
+
+
+def test_evolve_style_returns_none_on_error():
+    best = [{"post_type": "signal", "content_vi": "x", "views": 300,
+             "likes": 5, "comments": 2, "reactions": 5}]
+    def fail_claude(prompt):
+        return None, "claude error"
+    assert tuning.evolve_style(best, [], "", fail_claude) is None
+    # no best posts -> None
+    assert tuning.evolve_style([], [], "", lambda p: ("x", None)) is None
+
+
 def test_auto_tune_records_trend(tmp_path):
     path = tmp_path / "tuning.json"
     by_type = [{"post_type": "signal", "avg_views": 100, "avg_likes": 1,

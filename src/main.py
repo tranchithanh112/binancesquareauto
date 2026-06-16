@@ -583,25 +583,44 @@ def main(argv: list[str] | None = None) -> int:
     if getattr(args, "auto_tune", False):
         try:
             from src import tuning
+            from src.runners.claude_cli import rewrite as claude_rewrite
             # Refresh stats first so tuning sees the latest numbers.
             collect_stats(cfg, db)
             by_type = db.stats_by_post_type()
             res = tuning.auto_tune(by_type)
+            # Evolve the writing style hint from best/worst posts (format,
+            # length, voice all live in this LLM-learned guideline).
+            style_changed = False
+            try:
+                best = db.posts_ranked_by_engagement(limit=3, best=True)
+                worst = db.posts_ranked_by_engagement(limit=3, best=False)
+                new_hint = tuning.evolve_style(
+                    best, worst, tuning.load_style(), claude_rewrite)
+                if new_hint:
+                    tuning.save_style(new_hint)
+                    style_changed = True
+                    res["style_hint"] = new_hint
+            except Exception:
+                logging.getLogger("main").exception("evolve_style failed")
             if not res.get("changed"):
                 msg = f"🔧 Auto-tune: {res.get('reason','chưa đủ data')}, giữ nguyên tỷ lệ."
+                if style_changed:
+                    msg += f"\n\n✍️ Style mới: {res['style_hint']}"
             else:
-                lines = ["🔧 Auto-tune tuần — tỷ lệ post type mới:"]
+                lines = ["🔧 Auto-tune (3 ngày) — tỷ lệ post type mới:"]
                 for t in res["weights"]:
                     old = res["old"].get(t, "?")
                     sc = res["scores"].get(t, 0)
                     lines.append(f"• {t}: {old}% → {res['weights'][t]}%  (score {sc})")
-                trend = ("📈 engagement tăng so tuần trước"
+                trend = ("📈 engagement tăng so lần trước"
                          if res.get("improving") else
-                         "📉 engagement KHÔNG tăng — cân nhắc đổi format/giọng văn thủ công")
+                         "📉 engagement KHÔNG tăng — đã tự đổi style, theo dõi tiếp")
                 prev = res.get("prev_avg_score")
                 lines.append(f"\nĐiểm TB: {res['avg_score']}"
-                             + (f" (tuần trước {prev})" if prev is not None else ""))
+                             + (f" (lần trước {prev})" if prev is not None else ""))
                 lines.append(trend)
+                if style_changed:
+                    lines.append(f"\n✍️ Style tự học mới:\n{res['style_hint']}")
                 msg = "\n".join(lines)
             try:
                 send_message(token=cfg.telegram_bot_token,

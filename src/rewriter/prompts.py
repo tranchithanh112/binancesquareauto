@@ -240,6 +240,19 @@ def build_typed_prompt(*, post_type: str, title: str, content: str,
                        prices: dict[str, float] | None = None) -> str:
     tags_str = " ".join(f"${t}" for t in coin_tags)
     src = _pretty_source(source)
+    # Inject the self-learned style hint (evolved by --auto-tune from real
+    # engagement) so format/length/voice keep improving over time.
+    voice = VOICE
+    try:
+        from src.tuning import load_style
+        hint = load_style()
+        if hint:
+            voice = VOICE + (
+                "\n- GỢI Ý TỰ HỌC (ƯU TIÊN CAO — rút từ bài tương tác tốt, "
+                f"áp dụng triệt để): {hint}"
+            )
+    except Exception:
+        pass
     if post_type == "signal":
         tmpl = SIGNAL_TEMPLATE
     elif post_type == "poll":
@@ -250,7 +263,7 @@ def build_typed_prompt(*, post_type: str, title: str, content: str,
         tmpl = ARTICLE_TEMPLATE
     else:
         tmpl = SHORT_TEMPLATE
-    return tmpl.format(voice=VOICE, title=title, content=content,
+    return tmpl.format(voice=voice, title=title, content=content,
                        importance=importance, coin_tags=tags_str, source=src,
                        prices=_format_prices(prices))
 

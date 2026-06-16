@@ -59,29 +59,29 @@ function New-BnTask {
     Write-Host "  registered: $Name"
 }
 
-# --- Scrape: 2x/day (lower volume — quality over spam) ---
+# --- Scrape: 2 batches (08:50 sáng, 17:50 chiều) ---
 $scrapeTriggers = @(
-    (New-ScheduledTaskTrigger -Daily -At "07:00"),
-    (New-ScheduledTaskTrigger -Daily -At "19:00")
+    (New-ScheduledTaskTrigger -Daily -At "08:50"),
+    (New-ScheduledTaskTrigger -Daily -At "17:50")
 )
 New-BnTask -Name "BinanceSquareBot-Scrape" `
     -CmdArgs @("-m", "src.main", "--scrape") `
     -Triggers $scrapeTriggers
 
-# --- Rewrite: 10 min after each scrape, max 6 each = ~12/day capacity ---
+# --- Rewrite: batch 1 lúc 09:00, batch 2 lúc 18:00, max 12 each = ~24/day ---
 $rewriteTriggers = @(
-    (New-ScheduledTaskTrigger -Daily -At "07:10"),
-    (New-ScheduledTaskTrigger -Daily -At "19:10")
+    (New-ScheduledTaskTrigger -Daily -At "09:00"),
+    (New-ScheduledTaskTrigger -Daily -At "18:00")
 )
 New-BnTask -Name "BinanceSquareBot-Rewrite" `
-    -CmdArgs @("-m", "src.main", "--auto-rewrite", "--max-rewrites", "6") `
+    -CmdArgs @("-m", "src.main", "--auto-rewrite", "--max-rewrites", "12") `
     -Triggers $rewriteTriggers
 
-# --- Post: every 90 min from 07:30 to ~22:30 = ~11 posts/day ---
-$postTrigger = New-ScheduledTaskTrigger -Daily -At "07:30"
-$postTrigger.Repetition = (New-ScheduledTaskTrigger -Once -At "07:30" `
-    -RepetitionInterval (New-TimeSpan -Minutes 90) `
-    -RepetitionDuration (New-TimeSpan -Hours 15)).Repetition
+# --- Post: every 45 min from 09:00 to ~23:00 = ~19 posts/day ---
+$postTrigger = New-ScheduledTaskTrigger -Daily -At "09:00"
+$postTrigger.Repetition = (New-ScheduledTaskTrigger -Once -At "09:00" `
+    -RepetitionInterval (New-TimeSpan -Minutes 45) `
+    -RepetitionDuration (New-TimeSpan -Hours 14)).Repetition
 New-BnTask -Name "BinanceSquareBot-Post" `
     -CmdArgs @("-m", "src.main", "--post-next") `
     -Triggers @($postTrigger)
@@ -91,10 +91,14 @@ New-BnTask -Name "BinanceSquareBot-Summary" `
     -CmdArgs @("-m", "src.main", "--summary") `
     -Triggers @(New-ScheduledTaskTrigger -Daily -At "23:55")
 
-# --- Weekly auto-tune (Sunday 23:50) — re-weight post types by engagement ---
+# --- Auto-tune every 3 days at 23:50 — reweight types + evolve style ---
+$tuneTrigger = New-ScheduledTaskTrigger -Once -At "23:50"
+$tuneTrigger.Repetition = (New-ScheduledTaskTrigger -Once -At "23:50" `
+    -RepetitionInterval (New-TimeSpan -Days 3) `
+    -RepetitionDuration (New-TimeSpan -Days 3650)).Repetition
 New-BnTask -Name "BinanceSquareBot-Tune" `
     -CmdArgs @("-m", "src.main", "--auto-tune") `
-    -Triggers @(New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At "23:50")
+    -Triggers @($tuneTrigger)
 
 # --- Engagement stats collection (2x/day) ---
 New-BnTask -Name "BinanceSquareBot-Stats" `

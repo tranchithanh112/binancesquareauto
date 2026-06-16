@@ -23,6 +23,67 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+DEFAULT_STYLE = ""  # free-text guidance appended to the writing prompt
+
+
+def load_style(path: Path | str = TUNING_PATH) -> str:
+    try:
+        d = json.loads(Path(path).read_text(encoding="utf-8"))
+        return str(d.get("style_hint") or DEFAULT_STYLE)
+    except Exception:
+        return DEFAULT_STYLE
+
+
+def save_style(style_hint: str, path: Path | str = TUNING_PATH) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = _read_all(path)
+    data["style_hint"] = style_hint[:600]
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _fmt_posts(rows: list[dict]) -> str:
+    out = []
+    for r in rows:
+        out.append(
+            f"[{r.get('post_type')}] 👁{r.get('views')} ❤{r.get('likes')} "
+            f"💬{r.get('comments')} 🔥{r.get('reactions')}\n{r.get('content_vi','')[:400]}"
+        )
+    return "\n---\n".join(out) if out else "(chưa có)"
+
+
+def evolve_style(best: list[dict], worst: list[dict], current_hint: str,
+                 claude_fn) -> str | None:
+    """Ask the LLM to evolve a short Vietnamese style guideline based on which
+    posts earned engagement and which flopped. Returns a new hint (≤ ~400
+    chars) or None on failure. `claude_fn(prompt)->(output, err)`."""
+    if not best:
+        return None
+    prompt = (
+        "Bạn là chuyên gia tối ưu nội dung Binance Square tiếng Việt. Dưới đây là "
+        "các bài ĐĂNG TỐT NHẤT và KÉM NHẤT của một tài khoản (kèm lượt xem/like/"
+        "comment/reaction). Nhiệm vụ: rút ra MỘT đoạn hướng dẫn ngắn (tiếng Việt, "
+        "dưới 400 ký tự) để bài sau viết hấp dẫn hơn — nói cụ thể về CẤU TRÚC, ĐỘ "
+        "DÀI, VĂN PHONG, mở bài, cách câu tương tác. Chỉ nêu điều CỤ THỂ rút ra từ "
+        "dữ liệu, không chung chung. KHÔNG giải thích, KHÔNG markdown.\n\n"
+        f"HƯỚNG DẪN HIỆN TẠI: {current_hint or '(chưa có)'}\n\n"
+        f"=== BÀI TỐT NHẤT ===\n{_fmt_posts(best)}\n\n"
+        f"=== BÀI KÉM NHẤT ===\n{_fmt_posts(worst)}\n\n"
+        "Xuất ĐÚNG khối này:\n---HINT---\n<đoạn hướng dẫn mới>\n---END---"
+    )
+    try:
+        out, err = claude_fn(prompt)
+    except Exception:
+        return None
+    if err or not out:
+        return None
+    try:
+        hint = out.split("---HINT---", 1)[1].split("---END---", 1)[0].strip()
+    except (IndexError, ValueError):
+        return None
+    return hint[:600] if hint else None
+
+
 def load_weights(path: Path | str = TUNING_PATH) -> dict[str, float]:
     try:
         d = json.loads(Path(path).read_text(encoding="utf-8"))

@@ -180,6 +180,24 @@ class Database:
                  reactions, bookmarks, collected_at),
             )
 
+    def posts_ranked_by_engagement(self, *, limit: int = 3,
+                                   best: bool = True) -> list[dict]:
+        """Top/bottom posts by engagement score, with their text + type, for
+        the style-evolution step. Only posts with collected views."""
+        order = "DESC" if best else "ASC"
+        with self._conn() as c:
+            rows = c.execute(
+                "SELECT p.post_type AS post_type, p.content_vi AS content_vi, "
+                "s.views AS views, s.likes AS likes, s.comments AS comments, "
+                "s.reactions AS reactions, "
+                "(s.views + s.likes*50 + s.comments*100 + s.reactions*30) AS score "
+                "FROM post_stats s JOIN posts p ON p.id = s.post_id "
+                "WHERE p.content_vi IS NOT NULL AND p.content_vi != '' "
+                "AND s.views > 0 "
+                f"ORDER BY score {order} LIMIT ?", (limit,)
+            ).fetchall()
+            return [dict(r) for r in rows]
+
     def stats_by_post_type(self) -> list[dict]:
         """Aggregate engagement averages per post_type (joined via post_id)."""
         with self._conn() as c:
