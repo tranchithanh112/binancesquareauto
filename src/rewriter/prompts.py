@@ -33,6 +33,9 @@ GIỌNG VĂN — BẮT BUỘC (đây là phần quan trọng nhất):
 - Vùng giá vào/ra phải neo quanh giá thực (vd giá thực 65k thì canh 62k-60k,
   không nói 98k-100k). Không hype "x100".
 - Viết liền mạch, KHÔNG sáo rỗng, không mở bài kiểu "Thị trường crypto hôm nay".
+- TRÁNH DẤU HIỆU BÀI AI: KHÔNG "Trong bối cảnh...", "Đáng chú ý là...", "Nhìn
+  chung...", "Tóm lại...", không liệt kê 1. 2. 3. cứng nhắc. Viết như người gõ
+  vội trên điện thoại — đoạn ngắn 1-3 câu, xuống dòng nhiều cho dễ đọc.
 - TỰ KIỂM TRA TRƯỚC KHI XUẤT (bắt buộc): rà lại toàn bài, đảm bảo MỌI con số,
   sự kiện, tên người/tổ chức nêu ra ĐỀU có trong TIN NGUỒN hoặc phần GIÁ THỰC
   ở trên. Nếu chi tiết nào không chắc chắn/không có trong nguồn thì BỎ đi,
@@ -52,7 +55,10 @@ VOICE_OBJECTIVE = """\
 GIỌNG VĂN — BẢN TIN KHÁCH QUAN (bắt buộc):
 - Viết TRUNG TÍNH như một bản tin nhanh. TUYỆT ĐỐI KHÔNG xưng "mình", KHÔNG
   gọi "ae", KHÔNG nêu quan điểm cá nhân ("mình nghĩ", "theo mình", "mình thấy").
-- Chỉ tường thuật sự kiện + số liệu một cách gọn, rõ, chính xác.
+- Chỉ tường thuật sự kiện + số liệu một cách gọn, rõ, chính xác — nhưng câu đầu
+  phải là tít HÚT MẮT (con số/diễn biến nóng nhất), không vòng vo.
+- TRÁNH dấu hiệu bài AI: không "Trong bối cảnh...", "Đáng chú ý là...", không
+  liệt kê 1. 2. 3. Đoạn ngắn, xuống dòng cho dễ đọc trên mobile.
 - TUYỆT ĐỐI KHÔNG emoji làm tiêu đề mục, không bullet cứng nhắc, không section
   máy móc, không bảng biểu. Viết liền mạch như đoạn tin.
 - Coin tag $BTC, $SOL... lồng tự nhiên trong câu.
@@ -80,13 +86,18 @@ Nội dung: {content}
 Coin liên quan: {coin_tags}
 GIÁ THỰC HIỆN TẠI (USD), DÙNG ĐÚNG SỐ NÀY: {prices}
 
-YÊU CẦU BÀI NÀY (bản tin nhanh, KHÁCH QUAN):
-- Mở đầu đi thẳng vào sự kiện, KHÔNG xưng "mình", KHÔNG cảm nhận cá nhân.
-- Tường thuật tin gọn, rõ, lồng số liệu thật quan trọng.
-- Nêu tác động tới {coin_tags} một cách trung tính, KHÔNG "mình nghĩ/mình thấy".
-- KHÔNG khuyến nghị mua/bán cá nhân. Chỉ đưa thông tin.
-- Dài khoảng 400-700 ký tự. Mọi câu phải trọn vẹn.
-- Cuối: dòng "Nguồn: {source}" rồi một dòng mời theo dõi trung tính.
+YÊU CẦU BÀI NÀY (bản tin nhanh, KHÁCH QUAN nhưng HẤP DẪN):
+- CÂU ĐẦU = HOOK: nêu thẳng diễn biến nóng nhất kèm CON SỐ gây chú ý, viết như
+  tít báo mạng (vd "ETF Bitcoin hút ròng 64 triệu USD chỉ trong một phiên",
+  "BOJ nâng lãi suất lên 1% — cao nhất kể từ 1995"). KHÔNG mở bài vòng vo,
+  KHÔNG "Theo tin tức mới nhất...".
+- 2-3 câu tiếp: bối cảnh + vì sao đáng chú ý + tác động tới {coin_tags}, viết
+  TRUNG TÍNH (không "mình nghĩ"). Mỗi câu gọn, xuống dòng cho dễ đọc.
+- KHÔNG khuyến nghị mua/bán. Chỉ thông tin + dữ kiện.
+- Khép lại bằng 1 câu hỏi mở TRUNG TÍNH để người đọc bình luận (vd "Diễn biến
+  này theo bạn là tín hiệu tăng hay giảm?").
+- Dài 350-650 ký tự. Mọi câu trọn vẹn, không cụt.
+- Cuối cùng: dòng "Nguồn: {source}" rồi một dòng mời theo dõi trung tính.
 
 ĐỊNH DẠNG (chỉ xuất đúng khối này)
 ---VI---
@@ -107,12 +118,15 @@ Nội dung: {content}
 Coin chính: {coin_tags}
 GIÁ THỰC HIỆN TẠI (USD), DÙNG ĐÚNG SỐ NÀY: {prices}
 
-YÊU CẦU (ngắn, sắc):
-- 3-5 câu thôi. Một nhận định nhanh về {coin_tags} với số liệu thật từ tin.
-- Kiểu "mình thấy $SOL đang test vùng 14x, volume tăng, ai cầm thì canh chốt
-  bớt" — đời thường, có quan điểm.
-- Kết bằng 1 câu mời ae ("ae tính sao con này?").
-- Dưới 450 ký tự. Câu trọn vẹn.
+YÊU CẦU (ngắn, sắc, như trader thật phím hàng):
+- CÂU ĐẦU = tín hiệu chính, đập thẳng vào mặt: coin + vùng giá thật + động
+  thái (vd "$SOL đang nén chặt quanh 14x, volume cạn dần — sắp có cú nổ").
+- 1-2 câu: mình đọc tín hiệu này thế nào, mình đang tính làm gì (canh mua/chốt/
+  đứng ngoài). Cụ thể, có thái độ, KHÔNG ba phải.
+- Neo MỌI con số vào giá thật ở trên. Không bịa.
+- Kết = 1 câu hỏi ngắn dễ trả lời để ae nhảy vào ("Ae đang gồng hay đã chốt
+  con này?").
+- Dưới 420 ký tự. Câu trọn vẹn. Xuống dòng cho thoáng.
 
 ĐỊNH DẠNG (chỉ xuất đúng khối này)
 ---VI---
@@ -133,11 +147,13 @@ Nội dung: {content}
 Coin chính: {coin_tags}
 GIÁ THỰC HIỆN TẠI (USD), DÙNG ĐÚNG SỐ NÀY: {prices}
 
-YÊU CẦU:
-- 1-2 câu dẫn dắt tình huống về {coin_tags} với 1 con số cụ thể.
-- 1 câu hỏi A/B tự nhiên kiểu trader hỏi nhau, không cần emoji 🟢🔴 cứng nhắc
-  (vd: "Ae nghĩ $BTC tuần này phá 70k hay về test lại 58k? Cmt phát mình hóng").
-- Dưới 400 ký tự. Câu trọn vẹn.
+YÊU CẦU (câu tương tác là MỤC TIÊU SỐ 1):
+- 1-2 câu set-up: tình huống {coin_tags} ngay lúc này + 1 con số thật tạo
+  CĂNG THẲNG (vd "$BTC đang kẹt cứng ở 65k, phe mua phe bán giằng nhau từng tick").
+- 1 câu hỏi A/B RÕ RÀNG, dễ chọn, đáng để cãi nhau — đặt 2 phương án đối nghịch
+  cụ thể (vd "Cuối tuần này: $BTC bung lên 70k hay thủng 60k? Ae chọn phe nào?").
+- Hỏi sao cho người lướt qua MUỐN gõ 1 chữ trả lời. Đừng hỏi chung chung.
+- Dưới 380 ký tự. Câu trọn vẹn.
 
 ĐỊNH DẠNG (chỉ xuất đúng khối này)
 ---VI---
@@ -158,12 +174,14 @@ Nội dung: {content}
 Coin chính: {coin_tags}
 GIÁ THỰC HIỆN TẠI (USD), DÙNG ĐÚNG SỐ NÀY: {prices}
 
-YÊU CẦU:
-- 1 quan điểm mạnh, hơi ngược số đông, về {coin_tags} — neo vào 1 fact thật từ
-  tin, KHÔNG bịa.
-- 1-2 câu lý do tại sao mình nghĩ vậy.
-- 1 câu thách thức nhẹ mời ae phản biện ("ae thấy mình sai chỗ nào cứ bem").
-- Dưới 500 ký tự. Câu trọn vẹn.
+YÊU CẦU (gây tranh luận có chừng mực):
+- CÂU ĐẦU = tuyên bố mạnh, ngược đám đông, về {coin_tags} — phải neo vào 1 fact
+  thật từ tin (vd "Ai đang hô $ETH sắp x5 nên tỉnh lại đi"). Gây tò mò/khó chịu
+  nhẹ để người ta muốn đọc tiếp, NHƯNG không bịa, không chợ búa.
+- 1-2 câu lý do mình nghĩ vậy — logic rõ, có dẫn chứng từ tin/giá thật.
+- Chốt bằng 1 câu mời phản biện thẳng thắn ("Ae thấy mình sai chỗ nào, bem
+  thẳng bên dưới").
+- Dưới 480 ký tự. Câu trọn vẹn. Giọng tự tin nhưng không hằn học.
 
 ĐỊNH DẠNG (chỉ xuất đúng khối này)
 ---VI---
@@ -184,16 +202,19 @@ Nội dung: {content}
 Coin liên quan: {coin_tags}
 GIÁ THỰC HIỆN TẠI (USD), DÙNG ĐÚNG SỐ NÀY: {prices}
 
-TIÊU ĐỀ: một tiêu đề tiếng Việt giật nhẹ, cụ thể với tin này (≤ 80 ký tự),
-không bịa, không clickbait lố.
+TIÊU ĐỀ: một tiêu đề tiếng Việt CỤ THỂ + có sức hút, tạo khoảng-tò-mò
+(curiosity gap) nhưng không clickbait lố, ≤ 80 ký tự (vd "BOJ nâng lãi suất:
+vì sao cú này nguy hiểm với Bitcoin hơn ae nghĩ"). Không bịa.
 
-THÂN BÀI (giọng người, viết như chia sẻ thesis dài):
-- Mở bằng cảm nhận/quan điểm cá nhân về sự kiện.
-- Kể sự kiện + tác động tới thị trường bằng giọng của mình, lồng số liệu.
-- Nêu rõ mình nghĩ gì, kịch bản ngắn hạn mình nghiêng về bên nào.
-- Nếu hợp lý, chia sẻ vùng giá/chiến lược kiểu cá nhân.
-- Kết mời ae thảo luận.
-- Thân bài 900-1500 ký tự, liền mạch, câu trọn vẹn. KHÔNG section header emoji.
+THÂN BÀI (giọng người thật, như chia sẻ thesis cho ae trong nhóm):
+- CÂU MỞ phải níu người đọc: một góc nhìn/nhận định cá nhân sắc, hoặc một
+  câu hỏi lớn, không tóm tắt khô khan.
+- Kể sự kiện + tác động tới thị trường bằng giọng của mình, lồng số liệu thật.
+- Nêu rõ mình nghĩ gì, kịch bản ngắn hạn mình nghiêng bên nào VÀ vì sao.
+- Nếu hợp lý, chia sẻ vùng giá/chiến lược cá nhân (neo vào giá thật).
+- Chốt bằng câu hỏi mở để ae thảo luận.
+- Viết liền mạch, đoạn ngắn 2-3 câu, xuống dòng cho dễ đọc trên mobile.
+- Thân bài 900-1500 ký tự, câu trọn vẹn. KHÔNG emoji làm tiêu đề mục.
 
 ĐỊNH DẠNG (chỉ xuất đúng khối này)
 ---TITLE---
