@@ -47,6 +47,26 @@ GIỌNG VĂN — BẮT BUỘC (đây là phần quan trọng nhất):
 """
 
 
+# Objective voice for short NEWS posts — no first person, no opinion.
+VOICE_OBJECTIVE = """\
+GIỌNG VĂN — BẢN TIN KHÁCH QUAN (bắt buộc):
+- Viết TRUNG TÍNH như một bản tin nhanh. TUYỆT ĐỐI KHÔNG xưng "mình", KHÔNG
+  gọi "ae", KHÔNG nêu quan điểm cá nhân ("mình nghĩ", "theo mình", "mình thấy").
+- Chỉ tường thuật sự kiện + số liệu một cách gọn, rõ, chính xác.
+- TUYỆT ĐỐI KHÔNG emoji làm tiêu đề mục, không bullet cứng nhắc, không section
+  máy móc, không bảng biểu. Viết liền mạch như đoạn tin.
+- Coin tag $BTC, $SOL... lồng tự nhiên trong câu.
+- CHỈ dùng giá thực ở phần "GIÁ THỰC HIỆN TẠI", TUYỆT ĐỐI KHÔNG bịa/đoán giá.
+  Giá để trống thì đừng nêu con số.
+- Tối đa 1-2 hashtag. Không disclaimer dài dòng.
+- TỰ KIỂM TRA: mọi số/sự kiện/tên phải có trong TIN NGUỒN hoặc GIÁ THỰC. Không
+  chắc thì bỏ, không đoán. Không nêu ngày/giờ trừ khi nguồn ghi rõ.
+- Cuối bài: ghi nguồn một dòng ("Nguồn: {source}") rồi MỘT dòng mời theo dõi
+  TRUNG TÍNH, KHÔNG xưng "mình" (vd: "Theo dõi kênh để cập nhật tin nhanh mỗi
+  ngày 🔥", "Follow để không bỏ lỡ tin nóng nhé"). Đổi cách diễn đạt mỗi bài.
+"""
+
+
 SHORT_TEMPLATE = """\
 Bạn viết một bài đăng Binance Square bằng TIẾNG VIỆT, dựa trên tin dưới đây.
 Chỉ xuất ra khối định dạng yêu cầu, không giải thích, không hỏi lại.
@@ -60,13 +80,13 @@ Nội dung: {content}
 Coin liên quan: {coin_tags}
 GIÁ THỰC HIỆN TẠI (USD), DÙNG ĐÚNG SỐ NÀY: {prices}
 
-YÊU CẦU BÀI NÀY (tin tức + góc nhìn):
-- Mở đầu bằng nhận định/cảm nhận cá nhân về tin này (không tóm tắt khô khan).
-- Kể tin bằng giọng của mình, lồng số liệu quan trọng.
-- Cho quan điểm: tin này tác động gì tới {coin_tags}, mình nhìn nhận sao.
-- Nếu hợp lý, gợi ý vùng giá/hành động kiểu chia sẻ ("mình canh vào vùng...").
-- Kết mời ae tương tác.
-- Dài khoảng 600-900 ký tự. Mọi câu phải trọn vẹn.
+YÊU CẦU BÀI NÀY (bản tin nhanh, KHÁCH QUAN):
+- Mở đầu đi thẳng vào sự kiện, KHÔNG xưng "mình", KHÔNG cảm nhận cá nhân.
+- Tường thuật tin gọn, rõ, lồng số liệu thật quan trọng.
+- Nêu tác động tới {coin_tags} một cách trung tính, KHÔNG "mình nghĩ/mình thấy".
+- KHÔNG khuyến nghị mua/bán cá nhân. Chỉ đưa thông tin.
+- Dài khoảng 400-700 ký tự. Mọi câu phải trọn vẹn.
+- Cuối: dòng "Nguồn: {source}" rồi một dòng mời theo dõi trung tính.
 
 ĐỊNH DẠNG (chỉ xuất đúng khối này)
 ---VI---
@@ -248,14 +268,20 @@ def build_typed_prompt(*, post_type: str, title: str, content: str,
                        prices: dict[str, float] | None = None) -> str:
     tags_str = " ".join(f"${t}" for t in coin_tags)
     src = _pretty_source(source)
+    # Short news (news_ta + normal importance) is objective — no first person.
+    # Signals/analysis/articles keep the personal "mình/ae" voice.
+    is_short_news = (post_type == "news_ta" and importance != "high")
+    # Pre-substitute {source} inside the voice block (str.format on the template
+    # does not recurse into the injected voice value).
+    base_voice = (VOICE_OBJECTIVE if is_short_news else VOICE).replace("{source}", src)
     # Inject the self-learned style hint (evolved by --auto-tune from real
     # engagement) so format/length/voice keep improving over time.
-    voice = VOICE
+    voice = base_voice
     try:
         from src.tuning import load_style
         hint = load_style()
         if hint:
-            voice = VOICE + (
+            voice = base_voice + (
                 "\n- GỢI Ý TỰ HỌC (ƯU TIÊN CAO — rút từ bài tương tác tốt, "
                 f"áp dụng triệt để): {hint}"
             )
