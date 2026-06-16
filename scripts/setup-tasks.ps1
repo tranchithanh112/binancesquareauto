@@ -74,13 +74,13 @@ $rewriteTriggers = @(
     (New-ScheduledTaskTrigger -Daily -At "18:00")
 )
 New-BnTask -Name "BinanceSquareBot-Rewrite" `
-    -CmdArgs @("-m", "src.main", "--auto-rewrite", "--max-rewrites", "12") `
+    -CmdArgs @("-m", "src.main", "--auto-rewrite", "--max-rewrites", "15") `
     -Triggers $rewriteTriggers
 
-# --- Post: every 45 min from 09:00 to ~23:00 = ~19 posts/day ---
+# --- Post: every 28 min from 09:00 to ~23:00 = ~30 posts/day ---
 $postTrigger = New-ScheduledTaskTrigger -Daily -At "09:00"
 $postTrigger.Repetition = (New-ScheduledTaskTrigger -Once -At "09:00" `
-    -RepetitionInterval (New-TimeSpan -Minutes 45) `
+    -RepetitionInterval (New-TimeSpan -Minutes 28) `
     -RepetitionDuration (New-TimeSpan -Hours 14)).Repetition
 New-BnTask -Name "BinanceSquareBot-Post" `
     -CmdArgs @("-m", "src.main", "--post-next") `
