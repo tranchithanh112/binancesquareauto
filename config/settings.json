@@ -13,7 +13,8 @@
     "reuters_url": "https://www.reuters.com/technology/cryptocurrency/",
     "coingecko_url": "https://www.coingecko.com/en/news",
     "google_news_queries": ["crypto regulation", "Fed rate decision", "SEC crypto"],
-    "x_accounts": ["elonmusk", "saylor", "VitalikButerin", "cz_binance"]
+    "x_accounts": ["elonmusk", "saylor", "VitalikButerin", "cz_binance"],
+    "telegram_channels": ["ThuanCapital", "Fivemincryptoann"]
   },
   "scrape": {
     "max_articles_per_source": 10,

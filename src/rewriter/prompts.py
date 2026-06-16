@@ -197,6 +197,8 @@ def _pretty_source(source: str) -> str:
     if s.startswith("x::"):
         handle = s.split("::", 1)[1]
         return f"X (@{handle})"
+    if (source or "").startswith("tg::"):
+        return f"Telegram @{source.split('::', 1)[1]}"
     return source or "Unknown"
 
 

@@ -65,6 +65,17 @@ def scrape_rss_sources(cfg) -> list[dict]:
             all_items.extend(items)
         except Exception as e:
             log.error(f"RSS {name} failed: {e}")
+    # Public Telegram channels (Vietnamese crypto news, no login needed)
+    for channel in cfg.sources.get("telegram_channels", []):
+        try:
+            from src.scraper.telegram_scraper import scrape_channel
+            items = scrape_channel(
+                channel, max_items=cfg.scrape["max_articles_per_source"],
+                max_age_hours=cfg.scrape["max_age_hours"])
+            log.info(f"TG {channel}: {len(items)} items")
+            all_items.extend(items)
+        except Exception as e:
+            log.error(f"TG {channel} failed: {e}")
     return all_items
 
 
