@@ -33,6 +33,11 @@ GIỌNG VĂN — BẮT BUỘC (đây là phần quan trọng nhất):
 - Vùng giá vào/ra phải neo quanh giá thực (vd giá thực 65k thì canh 62k-60k,
   không nói 98k-100k). Không hype "x100".
 - Viết liền mạch, KHÔNG sáo rỗng, không mở bài kiểu "Thị trường crypto hôm nay".
+- TỰ KIỂM TRA TRƯỚC KHI XUẤT (bắt buộc): rà lại toàn bài, đảm bảo MỌI con số,
+  sự kiện, tên người/tổ chức nêu ra ĐỀU có trong TIN NGUỒN hoặc phần GIÁ THỰC
+  ở trên. Nếu chi tiết nào không chắc chắn/không có trong nguồn thì BỎ đi,
+  tuyệt đối không đoán hay thêm thông tin bịa. Không nêu mốc thời gian cụ thể
+  (ngày/giờ) trừ khi nguồn ghi rõ. Bài đăng công khai nên sai một số là mất uy tín.
 """
 
 
