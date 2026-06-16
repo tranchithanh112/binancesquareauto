@@ -38,6 +38,12 @@ GIỌNG VĂN — BẮT BUỘC (đây là phần quan trọng nhất):
   ở trên. Nếu chi tiết nào không chắc chắn/không có trong nguồn thì BỎ đi,
   tuyệt đối không đoán hay thêm thông tin bịa. Không nêu mốc thời gian cụ thể
   (ngày/giờ) trừ khi nguồn ghi rõ. Bài đăng công khai nên sai một số là mất uy tín.
+- NGUỒN TIN: nếu bài DỰA TRÊN TIN TỨC, cuối bài ghi nguồn tự nhiên một dòng
+  (vd "Nguồn: {source}"). Bài quan điểm/tín hiệu thuần thì không cần.
+- KẾT BÀI LUÔN có lời mời follow, đặt ở DÒNG CUỐI sau câu hỏi tương tác, viết
+  tự nhiên và thay đổi cách diễn đạt mỗi bài (vd: "Follow mình để cập nhật tin
+  nóng + tín hiệu mỗi ngày nhé ae 🔥", "Theo dõi mình để không lỡ kèo nào ae
+  ơi", "Hóng tin sớm thì follow mình nhé"). Không lặp y nguyên một câu.
 """
 
 
