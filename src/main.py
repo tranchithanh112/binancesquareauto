@@ -381,10 +381,9 @@ def run_auto_rewrite(cfg, db: Database, max_rewrites: int = 10) -> dict:
                 except ValueError:
                     pass
 
-        # Image: prefer RSS-embedded. Fall back to a CoinGecko chart ONLY
-        # for the coin the article is actually about (title-weighted), and
-        # only when that coin is unambiguous — never force a BTC chart onto
-        # an article about another coin.
+        # Image: prefer RSS-embedded photo. Otherwise generate an AI
+        # illustration that matches the news (prompt written by Claude) —
+        # far more eye-catching than a generic price chart.
         image_url = None
         tmp_path = None
         src_img = extract_image_url(a["content"])
@@ -394,15 +393,19 @@ def run_auto_rewrite(cfg, db: Database, max_rewrites: int = 10) -> dict:
                 log.warning(f"article {a['id']}: image download failed: {derr}")
                 tmp_path = None
         if tmp_path is None:
-            chart_coin = primary_coin(a["title"], content)
-            if chart_coin:
-                from src.runners.coingecko_chart import make_chart
-                tmp_path, cerr = make_chart(chart_coin)
-                if cerr:
-                    log.warning(f"article {a['id']}: chart gen failed: {cerr}")
-                    tmp_path = None
-            else:
-                log.info(f"article {a['id']}: no clear primary coin, no chart")
+            from src.runners.ai_image import build_image_prompt, generate_image
+            chart_coin = primary_coin(a["title"], content) or ""
+            img_prompt = build_image_prompt(a["title"], chart_coin, content,
+                                            claude_fn=claude_rewrite)
+            tmp_path, ierr = generate_image(img_prompt)
+            if ierr:
+                log.warning(f"article {a['id']}: AI image failed: {ierr}, falling back to chart")
+                if chart_coin:
+                    from src.runners.coingecko_chart import make_chart
+                    tmp_path, cerr = make_chart(chart_coin)
+                    if cerr:
+                        log.warning(f"article {a['id']}: chart gen failed: {cerr}")
+                        tmp_path = None
         if tmp_path and api_key:
             bn_url, uerr = upload_image(api_key=api_key, image_path=tmp_path)
             try:
