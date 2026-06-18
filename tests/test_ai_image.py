@@ -2,25 +2,29 @@ from unittest.mock import patch, MagicMock
 from src.runners.ai_image import build_image_prompt, generate_image
 
 
-def test_build_image_prompt_fallback_no_claude():
+def test_build_image_prompt_includes_coin_and_style():
     p = build_image_prompt("BTC tăng mạnh", "BTC", "nội dung", claude_fn=None)
     assert "BTC" in p
     assert "NO text" in p
 
 
-def test_build_image_prompt_uses_claude():
-    def fake(ask):
-        return "a golden bull charging through a neon city", None
-    p = build_image_prompt("title", "ETH", "content", claude_fn=fake)
-    assert p.startswith("a golden bull charging")
-    assert "NO text" in p
+def test_build_image_prompt_themes_by_keyword():
+    rally = build_image_prompt("Bitcoin surge to new ATH", "BTC", "")
+    assert "rocket" in rally
+    hack = build_image_prompt("Major exploit drains protocol", "ETH", "")
+    assert "breach" in hack
+    etf = build_image_prompt("BlackRock ETF inflow record", "BTC", "")
+    assert "vaults" in etf
 
 
-def test_build_image_prompt_claude_error_fallback():
-    def fake(ask):
-        return None, "boom"
-    p = build_image_prompt("t", "SOL", "c", claude_fn=fake)
-    assert "SOL" in p
+def test_build_image_prompt_vietnamese_keyword():
+    p = build_image_prompt("Thị trường lao dốc, BTC giảm mạnh", "BTC", "")
+    assert "red descent" in p
+
+
+def test_build_image_prompt_default_scene():
+    p = build_image_prompt("some neutral partnership update", "SOL", "")
+    assert "SOL" in p and "NO text" in p
 
 
 def test_generate_image_writes_png(tmp_path):

@@ -395,8 +395,8 @@ def run_auto_rewrite(cfg, db: Database, max_rewrites: int = 10) -> dict:
         if tmp_path is None:
             from src.runners.ai_image import build_image_prompt, generate_image
             chart_coin = primary_coin(a["title"], content) or ""
-            img_prompt = build_image_prompt(a["title"], chart_coin, content,
-                                            claude_fn=claude_rewrite)
+            # Keyword-driven prompt — no Claude call (saves the 5h-limit).
+            img_prompt = build_image_prompt(a["title"], chart_coin, content)
             tmp_path, ierr = generate_image(img_prompt)
             if ierr:
                 log.warning(f"article {a['id']}: AI image failed: {ierr}, falling back to chart")

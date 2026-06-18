@@ -23,30 +23,47 @@ _STYLE = ("vibrant cinematic digital illustration, crypto finance theme, "
           "dramatic neon lighting, highly detailed, trending on artstation, "
           "NO text, NO words, NO letters, NO charts")
 
+# Keyword -> visual scene + mood. Matched against title+content (English or
+# Vietnamese keywords) so the cover reflects the news tone — no LLM call.
+_THEMES = [
+    (("etf", "inflow", "institution", "blackrock", "quỹ"),
+     "institutional money flowing into glowing futuristic vaults, bullish optimism"),
+    (("hack", "exploit", "breach", "drain", "stolen", "rug", "tấn công"),
+     "shattered coin among dark debris, red alarm glow, security breach"),
+    (("surge", "rally", "soar", "ath", "all-time high", "pump", "breakout",
+      "bứt phá", "tăng mạnh", "bùng nổ"),
+     "a rocket blasting upward through clouds, green bullish energy, euphoria"),
+    (("crash", "plunge", "dump", "selloff", "liquidation", "fear", "lao dốc",
+      "giảm mạnh", "sập"),
+     "coins tumbling down a stormy red descent, fear and volatility"),
+    (("sec", "regulation", "lawsuit", "ban", "court", "ruling", "pháp lý",
+      "quy định", "kiện"),
+     "a courthouse with digital scales of justice over a glowing coin, serious tone"),
+    (("whale", "wallet", "withdraw", "accumulat", "cá voi"),
+     "a giant whale silhouette gliding over an ocean of glowing coins, ominous"),
+    (("fed", "rate", "cpi", "inflation", "boj", "macro", "lãi suất", "vĩ mô"),
+     "a global financial skyline with glowing economic data streams, tense macro mood"),
+    (("halving", "upgrade", "mainnet", "launch", "ra mắt"),
+     "a futuristic ceremony unveiling a radiant coin, milestone energy"),
+]
+
+
+def _theme_for(text: str) -> str:
+    low = (text or "").lower()
+    for keys, scene in _THEMES:
+        if any(k in low for k in keys):
+            return scene
+    return "an epic symbolic crypto market scene, dynamic energy"
+
 
 def build_image_prompt(title: str, coin: str, content: str,
                        claude_fn=None) -> str:
-    """Ask Claude for a vivid English scene describing the news. Falls back to
-    a generic crypto-art prompt if the call fails or no claude_fn given."""
-    fallback = f"a powerful symbolic scene about {coin or 'cryptocurrency'} and the crypto market, {_STYLE}"
-    if claude_fn is None:
-        return fallback
-    ask = (
-        "Viết MỘT câu mô tả cảnh minh hoạ bằng TIẾNG ANH (dưới 25 từ) cho tin "
-        "crypto dưới đây, để tạo ảnh AI. Chỉ tả CẢNH/HÌNH ẢNH ẩn dụ, KHÔNG chữ "
-        "trong ảnh, KHÔNG biểu đồ. Chỉ xuất đúng câu đó, không giải thích.\n\n"
-        f"Tiêu đề: {title}\nNội dung: {content[:400]}"
-    )
-    try:
-        out, err = claude_fn(ask)
-    except Exception:
-        return fallback
-    if err or not out:
-        return fallback
-    scene = out.strip().strip('"').splitlines()[0][:200]
-    if len(scene) < 8:
-        return fallback
-    return f"{scene}, {_STYLE}"
+    """Build an English image prompt from the news WITHOUT an LLM call:
+    pick a visual theme by keyword + the subject coin. claude_fn is accepted
+    for backward compatibility but ignored (cost-saving)."""
+    scene = _theme_for(f"{title} {content}")
+    subj = coin or "cryptocurrency"
+    return f"a symbolic scene about {subj} cryptocurrency, {scene}, {_STYLE}"
 
 
 def generate_image(prompt: str, *, width: int = 1024, height: int = 576,
